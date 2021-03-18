@@ -1,0 +1,102 @@
+project_name: test_dbt_project
+
+expected_properties:
+  analyses/revenue_by_daily_cohort.yml:
+    version: 2
+    analyses:
+      - name: revenue_by_daily_cohort
+        description: ''
+        columns:
+          - name: created_on
+            description: ''
+          - name: total_revenue
+            description: ''
+  models/marts/core/customers.yml:
+    version: 2
+    models:
+      - name: customers
+        description: ''
+        columns:
+          - name: customer_id
+            description: ''
+          - name: created_at
+            description: ''
+  models/marts/core/orders.yml:
+    version: 2
+    models:
+      - name: orders
+        description: ''
+        columns:
+          - name: order_id
+            description: ''
+          - name: customer_id
+            description: ''
+          - name: item_id
+            description: ''
+          - name: quantity
+            description: ''
+          - name: order_at
+            description: ''
+  data/items.yml:
+    version: 2
+    seeds:
+      - name: items
+        description: ''
+        columns:
+          - name: item_id
+            description: ''
+          - name: price
+            description: ''
+          - name: updated_at
+            description: ''
+  snapshots/items_snapshot.yml:
+    version: 2
+    snapshots:
+      - name: items_snapshot
+        description: ''
+        columns:
+          - name: item_id
+            description: ''
+          - name: price
+            description: ''
+          - name: updated_at
+            description: ''
+          - name: dbt_valid_from
+            description: ''
+          - name: dbt_valid_to
+            description: ''
+
+expected_dbt_ls_results:
+  resource_type:
+    model:
+      - models/marts/core/customers.sql
+      - models/marts/core/orders.sql
+    seed:
+      - data/items.csv
+    snapshot:
+      - snapshots/items_snapshot.sql
+    analysis:
+      - analyses/revenue_by_daily_cohort.sql
+  select:
+    marts.core:
+      - models/marts/core/customers.sql
+      - models/marts/core/orders.sql
+  models:
+    customers:
+      - models/marts/core/customers.sql
+  exclude:
+    customers:
+      - models/marts/core/orders.sql
+      - data/items.csv
+      - snapshots/items_snapshot.sql
+  selector:
+    test_selector:
+      - models/marts/core/orders.sql
+      - snapshots/items_snapshot.sql
+  '':
+    '':
+      - models/marts/core/customers.sql
+      - models/marts/core/orders.sql
+      - data/items.csv
+      - snapshots/items_snapshot.sql
+      - analyses/revenue_by_daily_cohort.sql

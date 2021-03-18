@@ -1,0 +1,8 @@
+selectors:
+  - name: test_selector
+    definition:
+      union:
+        - method: fqn
+          value: orders
+        - method: fqn
+          value: items_snapshot
