@@ -13,18 +13,20 @@ setup(
     author='Robert Astel, Jennifer Zhan, Vincent Dragonette',
     author_email='rob.astel@gmail.com',
     license='Apache License 2.0',
-    description="dbt-invoke is a CLI for creating, updating, and deleting dbt property files.",
+    description=(
+        'dbt-invoke is a CLI for creating, updating, and deleting'
+        ' dbt property files.'
+    ),
     long_description=README,
     long_description_content_type='text/markdown',
     url='https://github.com/Dashlane/dbt-invoke',
     packages=find_packages(),
     install_requires=[
-        'PyYAML',
         'invoke>=1.4.1',
-        'dbt'
+        'PyYAML',
     ],
     python_requires='>=3.6.0',
     entry_points={
         'console_scripts': ["dbt-invoke = dbt_invoke.main:program.run"]
-    }
+    },
 )
