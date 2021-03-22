@@ -10,4 +10,4 @@ jobs:
       - uses: actions/setup-python@v2
       - uses: psf/black@stable
         with:
-          args: "dbt_invoke tests setup.py --check --diff --color -S -l 79"
+          black_args: "dbt_invoke tests setup.py --check --diff -S -l 79"
