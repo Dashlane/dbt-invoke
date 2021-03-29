@@ -1,4 +1,6 @@
 import os
+from concurrent.futures import ThreadPoolExecutor
+from functools import partial
 from pathlib import Path
 
 from invoke import task
@@ -16,12 +18,21 @@ UPDATE_AND_DELETE_HELP['log-level'] = (
     "One of Python's standard logging levels"
     " (DEBUG, INFO, WARNING, ERROR, CRITICAL)"
 )
+THREADS_HELP = {
+    'threads': (
+        "Maximum number of concurrent threads to use in"
+        " collecting resources' column information from the data warehouse"
+        " and in creating/updating the corresponding property files. Each"
+        " thread will result in SELECT statement being run on the data"
+        " warehouse (one per matching resource)."
+    )
+}
 MACRO_NAME = '_log_columns_list'
 
 
 @task(
     default=True,
-    help=UPDATE_AND_DELETE_HELP,
+    help={**UPDATE_AND_DELETE_HELP, **THREADS_HELP},
     auto_shortflags=False,
 )
 def update(
@@ -39,6 +50,7 @@ def update(
     bypass_cache=None,
     state=None,
     log_level=None,
+    threads=1,
 ):
     """
     Update property file(s) for the specified set of resources
@@ -70,6 +82,11 @@ def update(
         (run "dbt ls --help" for details)
     :param log_level: One of Python's standard logging levels
         (DEBUG, INFO, WARNING, ERROR, CRITICAL)
+    :param threads: Maximum number of concurrent threads to use in
+        collecting resources' column information from the data warehouse
+        and in creating/updating the corresponding property files.  Each
+        thread will result in SELECT statement being run on the data
+        warehouse (one per matching resource).
     :return: None
     """
     if log_level:
@@ -96,7 +113,9 @@ def update(
         state=state,
         **common_dbt_kwargs,
     )
-    create_all_property_files(ctx, transformed_ls_results, **common_dbt_kwargs)
+    create_all_property_files(
+        ctx, transformed_ls_results, threads=threads, **common_dbt_kwargs
+    )
 
 
 @task(
@@ -237,7 +256,9 @@ def transform_ls_results(ctx, **kwargs):
     return results
 
 
-def create_all_property_files(ctx, transformed_ls_results, **kwargs):
+def create_all_property_files(
+    ctx, transformed_ls_results, threads=1, **kwargs
+):
     """
     For each resource from dbt ls, create or update a property file
 
@@ -245,27 +266,31 @@ def create_all_property_files(ctx, transformed_ls_results, **kwargs):
     :param transformed_ls_results: Dictionary where the key is the
         resource path and the value is the dictionary form of the
         resource's json
+    :param threads: Maximum number of concurrent threads to use in
+        collecting resources' column information from the data warehouse
+        and in creating/updating the corresponding property files.  Each
+        thread will result in SELECT statement being run on the data
+        warehouse (one per matching resource).
     :param kwargs: Additional arguments for utils.dbt_run_operation
         (run "dbt run-operation --help" for details)
     :return: None
     """
-    for i, resource_location in enumerate(transformed_ls_results):
-        columns = get_columns(
-            ctx,
-            resource_location,
-            transformed_ls_results[resource_location],
-            **kwargs,
+    transformed_ls_results_length = len(transformed_ls_results)
+    partial_create_property_file = partial(
+        create_property_file,
+        ctx,
+        total=transformed_ls_results_length,
+        **kwargs,
+    )
+    counters = range(1, 1 + transformed_ls_results_length)
+    with ThreadPoolExecutor(max_workers=threads) as executor:
+        column_lists = executor.map(
+            partial_create_property_file,
+            transformed_ls_results.keys(),
+            transformed_ls_results.values(),
+            counters,
         )
-        property_path = Path(
-            ctx.config['project_path'], resource_location
-        ).with_suffix('.yml')
-        create_property_file(
-            property_path, transformed_ls_results[resource_location], columns
-        )
-        LOGGER.info(
-            f'Progress: {i + 1}/{len(transformed_ls_results)}'
-            f'... {property_path.name}'
-        )
+        list(column_lists)
 
 
 def delete_all_property_files(ctx, transformed_ls_results):
@@ -323,6 +348,33 @@ def delete_all_property_files(ctx, transformed_ls_results):
         LOGGER.info('There are no files to delete.')
 
 
+def create_property_file(
+    ctx, resource_location, resource_dict, counter, total, **kwargs
+):
+    """
+    Create a property file
+
+    :param ctx: An Invoke context object
+    :param resource_location: The location of the file representing the
+        resource
+    :param resource_dict: A dictionary representing the json output for
+        this resource from the "dbt ls" command
+    :param kwargs: Additional arguments for utils.dbt_run_operation
+        (run "dbt run-operation --help" for details)
+    :return: None
+    """
+    property_path = Path(
+        ctx.config['project_path'], resource_location
+    ).with_suffix('.yml')
+    LOGGER.info(f'Starting: {counter}/{total}... {property_path.name}')
+    columns = get_columns(ctx, resource_location, resource_dict, **kwargs)
+    property_file_dict = structure_property_file_dict(
+        property_path, resource_dict, columns
+    )
+    utils.write_yaml(property_path, property_file_dict)
+    LOGGER.info(f'Completed: {counter}/{total}... {property_path.name}')
+
+
 def get_columns(ctx, resource_location, resource_dict, **kwargs):
     """
     Get a list of the column names in a resource
@@ -369,9 +421,9 @@ def get_columns(ctx, resource_location, resource_dict, **kwargs):
     return columns
 
 
-def create_property_file(location, resource_dict, columns_list):
+def structure_property_file_dict(location, resource_dict, columns_list):
     """
-    Create a new property file
+    Structure a dictionary that will be used to create a property file
 
     :param location: The location in which to create the property file
     :param resource_dict: A dictionary representing the json output for
@@ -404,8 +456,7 @@ def create_property_file(location, resource_dict, columns_list):
         property_file_dict[resource_type_plural][0]['columns'].append(
             column_dict
         )
-    # Create the property file.
-    utils.write_yaml(location, property_file_dict)
+    return property_file_dict
 
 
 def get_property_header(resource, resource_type):

@@ -38,11 +38,12 @@ class TestProperties(TestDbtInvoke):
                     actual_props[section][0]['columns'][0]['tests'] = COL_TESTS
             all_files_actual_properties[full_file_path] = actual_props
             utils.write_yaml(full_file_path, actual_props)
-        # Automatically update property files
+        # Automatically update property files, using threads
         properties.update(
             self.ctx,
             project_dir=self.project_dir,
             profiles_dir=self.profiles_dir,
+            threads=2,
             log_level='DEBUG',
         )
         # Check that the automatic update did not overwrite the
