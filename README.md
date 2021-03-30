@@ -128,6 +128,9 @@ dbt-invoke properties <options>
   # Create/update property files for all supported resource types
   dbt-invoke properties
   
+  # Create/update property files for all supported resource types, using 4 concurrent threads
+  dbt-invoke properties --threads 4
+  
   # Create/update property files for all models in a models/marts directory
   dbt-invoke properties --models marts
   
