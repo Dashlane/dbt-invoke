@@ -23,8 +23,8 @@ THREADS_HELP = {
         "Maximum number of concurrent threads to use in"
         " collecting resources' column information from the data warehouse"
         " and in creating/updating the corresponding property files. Each"
-        " thread will result in SELECT statement being run on the data"
-        " warehouse (one per matching resource)."
+        " thread will run dbt's get_columns_in_query macro against the"
+        " data warehouse."
     )
 }
 MACRO_NAME = '_log_columns_list'
@@ -84,9 +84,9 @@ def update(
         (DEBUG, INFO, WARNING, ERROR, CRITICAL)
     :param threads: Maximum number of concurrent threads to use in
         collecting resources' column information from the data warehouse
-        and in creating/updating the corresponding property files.  Each
-        thread will result in SELECT statement being run on the data
-        warehouse (one per matching resource).
+        and in creating/updating the corresponding property files. Each
+        thread will run dbt's get_columns_in_query macro against the
+        data warehouse.
     :return: None
     """
     if log_level:
@@ -268,9 +268,9 @@ def create_all_property_files(
         resource's json
     :param threads: Maximum number of concurrent threads to use in
         collecting resources' column information from the data warehouse
-        and in creating/updating the corresponding property files.  Each
-        thread will result in SELECT statement being run on the data
-        warehouse (one per matching resource).
+        and in creating/updating the corresponding property files. Each
+        thread will run dbt's get_columns_in_query macro against the
+        data warehouse.
     :param kwargs: Additional arguments for utils.dbt_run_operation
         (run "dbt run-operation --help" for details)
     :return: None

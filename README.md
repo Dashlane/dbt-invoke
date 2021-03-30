@@ -1,6 +1,9 @@
 # dbt-invoke
-dbt-invoke is a CLI (built with [Invoke](http://www.pyinvoke.org/)) for creating, updating, and deleting 
-[dbt](https://docs.getdbt.com/docs/introduction) [property files](https://docs.getdbt.com/reference/declaring-properties).
+
+dbt-invoke is a CLI (built with [Invoke](http://www.pyinvoke.org/)) for 
+creating, updating, and deleting
+[dbt](https://docs.getdbt.com/docs/introduction) 
+[property files](https://docs.getdbt.com/reference/declaring-properties).
 
 
 - Supported dbt resource types:
@@ -10,12 +13,15 @@ dbt-invoke is a CLI (built with [Invoke](http://www.pyinvoke.org/)) for creating
   - analyses
   
 
-- Under the hood, this tool works by combining the power of the [dbt ls](https://docs.getdbt.com/reference/commands/list) and 
-  [dbt run-operation](https://docs.getdbt.com/reference/commands/run-operation) commands with dbt's built-in 
-  `get_columns_in_query` macro.
-  - This methodology allows the tool to work on [ephemeral models](https://docs.getdbt.com/docs/building-a-dbt-project/building-models/materializations#ephemeral) 
-    and [analyses](https://docs.getdbt.com/docs/building-a-dbt-project/analyses), which other approaches, such as those 
-    based on listing data warehouse tables/views, can miss.
+- Under the hood, this tool works by combining the power of the 
+  [dbt ls](https://docs.getdbt.com/reference/commands/list) and 
+  [dbt run-operation](https://docs.getdbt.com/reference/commands/run-operation)
+  commands with dbt's built-in `get_columns_in_query` macro.
+  - This methodology allows the tool to work on 
+    [ephemeral models](https://docs.getdbt.com/docs/building-a-dbt-project/building-models/materializations#ephemeral) 
+    and [analyses](https://docs.getdbt.com/docs/building-a-dbt-project/analyses),
+    which other approaches, such as those based on listing data warehouse 
+    tables/views, can miss.
 
 
 ## Installation
@@ -27,22 +33,27 @@ pip install dbt-invoke
 
 ## Usage
 
-- You must have previously executed `dbt run`/`dbt seed`/`dbt snapshot` on the resources for which you wish to 
-  create/update property files.
-  - If you have made updates to your resources, execute the appropriate command (`dbt run`/`dbt seed`/`dbt snapshot`) 
-    before using this tool to create/update property files.
+- You must have previously executed `dbt run`/`dbt seed`/`dbt snapshot` on the
+  resources for which you wish to create/update property files.
+  - If you have made updates to your resources, execute the appropriate command
+    (`dbt run`/`dbt seed`/`dbt snapshot`) before using this tool to 
+    create/update property files.
 
 
-- Property files will be created, updated, or deleted on a one-to-one basis in the same paths as the resource files 
-  they represent (the only change being a `.yml` file extension).
-  - For example, given a resource file in the location `models/marts/core/users.sql`, this tool will create, update, or 
-    delete a property file in the location `models/marts/core/users.yml`.
+- Property files will be created, updated, or deleted on a one-to-one basis in
+  the same paths as the resource files they represent (the only change being a
+  `.yml` file extension).
+  - For example, given a resource file in the location 
+    `models/marts/core/users.sql`, this tool will create, update, or delete a 
+    property file in the location `models/marts/core/users.yml`.
 
     
-- Any newly generated property files are created with the correct resource type, resource name, and columns.  A blank 
-  description field will be included for each column and for the resource itself.
-  - For example, when generating a new property file for a model `users` with column names `user_id` and `created_at`, 
-    the following yaml will be generated:
+- Any newly generated property files are created with the correct resource 
+  type, resource name, and columns.  A blank description field will be included
+  for each column and for the resource itself.
+  - For example, when generating a new property file for a model `users` with 
+    column names `user_id` and `created_at`, the following yaml will be 
+    generated:
     - ```yaml
       version: 2
       models:
@@ -56,12 +67,14 @@ pip install dbt-invoke
       ```
 
   
-- When updating an already existing property file, new columns in the resource will be added, and columns that no longer
-  exist will be removed.
+- When updating an already existing property file, new columns in the resource
+  will be added, and columns that no longer exist will be removed.
 
 
-- You may fill in the blank `description` properties and add other properties (e.g. `tests`).  They will remain in-tact 
-  when updating existing property files as long as the column/resource to which they belong still exists.
+- You may fill in the blank `description` properties and add other properties 
+  (e.g. `tests`).  They will remain in-tact when updating existing property 
+  files as long as the column/resource to which they belong still exists.
+
 
 ### Creating/Updating Property Files
 
@@ -72,15 +85,16 @@ dbt-invoke properties.update <options>
 dbt-invoke properties <options>
 ```
 
-- The first time you run this command, you should be prompted to add a short macro called `_log_columns_list` to your 
-  dbt project.
+- The first time you run this command, you should be prompted to add a short 
+  macro called `_log_columns_list` to your dbt project.
   - You may accept the prompt to add it automatically.
   - Otherwise, copy/paste it into one your dbt project's macro-paths yourself.
   - To print the macro, at any time, run `dbt-invoke properties.echo-macro`.
 
 
-- `<options>` uses the same arguments as the `dbt ls` command to allow flexibility in selecting the dbt resources for 
-  which you wish to create/update property files (run `dbt ls --help` for details).
+- `<options>` primarily uses the same arguments as the `dbt ls` command to 
+  allow flexibility in selecting the dbt resources for which you wish to 
+  create/update property files (run `dbt ls --help` for details).
   - --resource-type
   - --models
   - --select
@@ -95,12 +109,18 @@ dbt-invoke properties <options>
   - --state
 
 
-- Note: This tool supports only the long flags of `dbt ls` options (for example: `--models`, and not short flags like 
-  `-m`).
+- Note: This tool supports only the long flags of `dbt ls` options (for 
+  example: `--models`, and not short flags like `-m`).
   
 
-- An additional flag `--log-level` is made available to alter the verbosity of logs.
-  - It accepts one of Python's standard logging levels (debug, info, warning, error, critical).
+- Two additional flags are made available.
+  - `--log-level` to alter the verbosity of logs.
+    - It accepts one of Python's standard logging levels (debug, info, warning,
+      error, critical).
+  - `--threads` to set a maximum number of concurrent threads to use in 
+    collecting resources' column information from the data warehouse and in 
+    creating/updating the corresponding property files. Each thread will run 
+    dbt's get_columns_in_query macro against the data warehouse.
   
 
 - Some examples:
@@ -130,7 +150,8 @@ dbt-invoke properties <options>
 ```shell
 dbt-invoke properties.delete <options>
 ```
-- `<options>` uses the same arguments as for creating/updating property files.
+- `<options>` uses the same arguments as for creating/updating property files,
+  except for `--threads`.
 
 
 ### Help
@@ -144,3 +165,16 @@ dbt-invoke properties.delete <options>
   ```shell
   dbt-invoke <command_name> --help
   ```
+
+### Limitations
+
+- When updating existing files, formatting and comments are not preserved.
+- In order to collect or update the list of columns that should appear in 
+  each property file, dbt's get_columns_in_query macro is run for each matching
+  resource. As of the time of writing, get_columns_in_query uses a SELECT 
+  statement [limited to zero rows](https://github.com/fishtown-analytics/dbt/blob/2b48152da66dbd7f07272983bbc261f1b6924f20/core/dbt/include/global_project/macros/adapters/common.sql#L11).
+  While this is not typically a performance issue for table or incremental 
+  materializations, execution may be slow for complex analyses, views, or 
+  ephemeral materializations. 
+  - This may be partially remedied by increasing the value of the `--threads` 
+    option in `dbt-invoke properties.update`.
