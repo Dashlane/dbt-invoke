@@ -7,7 +7,23 @@ on:
     branches:
       - main
 jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: Set up Python
+        uses: actions/setup-python@v2
+        with:
+          python-version: 3.8
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install black
+      - name: Run Black linter
+        run: |
+          black dbt_invoke tests setup.py --check --diff --color -S -l 79
   test:
+    needs: lint
     runs-on: ubuntu-latest
     strategy:
       matrix:
