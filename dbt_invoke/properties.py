@@ -359,6 +359,10 @@ def create_property_file(
         resource
     :param resource_dict: A dictionary representing the json output for
         this resource from the "dbt ls" command
+    :param counter: An integer assigned to this file (for logging the
+        progress of file creation)
+    :param total: An integer representing the total number of files to
+        be created (for logging the progress of file creation)
     :param kwargs: Additional arguments for utils.dbt_run_operation
         (run "dbt run-operation --help" for details)
     :return: None
