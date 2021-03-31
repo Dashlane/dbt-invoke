@@ -72,7 +72,7 @@ pip install dbt-invoke
 
 
 - You may fill in the blank `description` properties and add other properties 
-  (e.g. `tests`).  They will remain in-tact when updating existing property 
+  (e.g. `tests`).  They will remain intact when updating existing property 
   files as long as the column/resource to which they belong still exists.
 
 
