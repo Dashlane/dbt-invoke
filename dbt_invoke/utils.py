@@ -293,12 +293,12 @@ def get_macro(macro_name):
 
 def add_macro(ctx, macro_name, logger=None):
     """
-    Add a macro to a dbt project
+    Add a macro to a dbt project if user confirms
 
     :param ctx: An Invoke context object
     :param macro_name: The name of the macro to add
     :param logger: A logging.Logger object
-    :return:
+    :return: None
     """
     if not logger:
         logger = get_logger('')

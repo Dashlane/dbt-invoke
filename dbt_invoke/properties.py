@@ -284,13 +284,13 @@ def create_all_property_files(
     )
     counters = range(1, 1 + transformed_ls_results_length)
     with ThreadPoolExecutor(max_workers=threads) as executor:
-        column_lists = executor.map(
+        results = executor.map(
             partial_create_property_file,
             transformed_ls_results.keys(),
             transformed_ls_results.values(),
             counters,
         )
-        list(column_lists)
+        list(results)
 
 
 def delete_all_property_files(ctx, transformed_ls_results):
@@ -447,7 +447,7 @@ def structure_property_file_dict(location, resource_dict, columns_list):
         property_file_dict = get_property_header(resource_name, resource_type)
     # Get the sub-dictionaries of each existing column
     resource_type_plural = SUPPORTED_RESOURCE_TYPES[resource_type]
-    columns_dict = {
+    existing_columns_dict = {
         item['name']: item
         for item in property_file_dict[resource_type_plural][0]['columns']
     }
@@ -456,7 +456,7 @@ def structure_property_file_dict(location, resource_dict, columns_list):
     # or else create a new sub-dictionary
     property_file_dict[resource_type_plural][0]['columns'] = list()
     for column in columns_list:
-        column_dict = columns_dict.get(column, get_property_column(column))
+        column_dict = existing_columns_dict.get(column, get_property_column(column))
         property_file_dict[resource_type_plural][0]['columns'].append(
             column_dict
         )
