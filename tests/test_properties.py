@@ -2,7 +2,8 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
-from dbt_invoke import properties, utils
+from dbt_invoke import properties
+from dbt_invoke.internal import _utils
 from test import TestDbtInvoke
 
 PARENT_DIR = Path(__file__).parent
@@ -29,7 +30,7 @@ class TestProperties(TestDbtInvoke):
         all_files_actual_properties = dict()
         for file_location, exp_props in self.expected_properties.items():
             full_file_path = Path(self.project_dir, file_location)
-            actual_props = utils.parse_yaml(full_file_path)
+            actual_props = _utils.parse_yaml(full_file_path)
             self.assertEqual(exp_props, actual_props)
             # Simulate a manual update of the property files
             for section in actual_props:
@@ -37,7 +38,7 @@ class TestProperties(TestDbtInvoke):
                     actual_props[section][0]['description'] = DESCRIPTION
                     actual_props[section][0]['columns'][0]['tests'] = COL_TESTS
             all_files_actual_properties[full_file_path] = actual_props
-            utils.write_yaml(full_file_path, actual_props)
+            _utils.write_yaml(full_file_path, actual_props)
         # Automatically update property files, using threads
         properties.update(
             self.ctx,
@@ -49,7 +50,7 @@ class TestProperties(TestDbtInvoke):
         # Check that the automatic update did not overwrite the
         # previous manual update
         for full_file_path, exp_props in all_files_actual_properties.items():
-            actual_props = utils.parse_yaml(full_file_path)
+            actual_props = _utils.parse_yaml(full_file_path)
             self.assertEqual(exp_props, actual_props)
         # Initiate then abort deletion of property files
         with patch('builtins.input', return_value='n'):

@@ -1,38 +1,44 @@
 import os
-from concurrent.futures import ThreadPoolExecutor
-from functools import partial
+import traceback
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 
 from invoke import task
 
-from dbt_invoke import utils
+from dbt_invoke.internal import _utils
 
-LOGGER = utils.get_logger('dbt-invoke')
-PARENT_DIR = Path(__file__).parent
-SUPPORTED_RESOURCE_TYPES = utils.PROPERTIES['supported_resource_types']
-RESOURCE_SELECTION_ARGUMENTS = utils.PROPERTIES['resource_selection_arguments']
-UPDATE_AND_DELETE_HELP = {
-    arg_name: utils.DBT_LS_ARG_HELP for arg_name in utils.DBT_CLI_LS_ARGS
+_LOGGER = _utils.get_logger('dbt-invoke')
+_MACRO_NAME = '_log_columns_list'
+_SUPPORTED_RESOURCE_TYPES = {
+    'model': 'models',
+    'seed': 'seeds',
+    'snapshot': 'snapshots',
+    'analysis': 'analyses',
 }
-UPDATE_AND_DELETE_HELP['log-level'] = (
+_PROGRESS_PADDING = 9  # Character padding to align progress logs
+
+_update_and_delete_help = {
+    arg.replace('_', '-'): details['help']
+    for arg, details in _utils.DBT_LS_ARGS.items()
+}
+_update_and_delete_help['log-level'] = (
     "One of Python's standard logging levels"
     " (DEBUG, INFO, WARNING, ERROR, CRITICAL)"
 )
-THREADS_HELP = {
-    'threads': (
-        "Maximum number of concurrent threads to use in"
-        " collecting resources' column information from the data warehouse"
-        " and in creating/updating the corresponding property files. Each"
-        " thread will run dbt's get_columns_in_query macro against the"
-        " data warehouse."
-    )
-}
-MACRO_NAME = '_log_columns_list'
 
 
 @task(
     default=True,
-    help={**UPDATE_AND_DELETE_HELP, **THREADS_HELP},
+    help={
+        **_update_and_delete_help,
+        'threads': (
+            "Maximum number of concurrent threads to use in"
+            " collecting resources' column information from the data warehouse"
+            " and in creating/updating the corresponding property files. Each"
+            " thread will run dbt's get_columns_in_query macro against the"
+            " data warehouse."
+        ),
+    },
     auto_shortflags=False,
 )
 def update(
@@ -89,37 +95,29 @@ def update(
         data warehouse.
     :return: None
     """
-    if log_level:
-        LOGGER.setLevel(log_level.upper())
-    assert_supported_resource_type(resource_type)
-    utils.get_project_info(ctx, project_dir=project_dir, logger=LOGGER)
-    common_dbt_kwargs = {
-        'project_dir': project_dir or ctx.config['project_path'],
-        'profiles_dir': profiles_dir,
-        'profile': profile,
-        'target': target,
-        'vars': vars,
-        'bypass_cache': bypass_cache,
-    }
-    # Get the paths and resource types of the
-    # resources for which to create property files
-    transformed_ls_results = transform_ls_results(
+    common_dbt_kwargs, transformed_ls_results = _initiate_alterations(
         ctx,
         resource_type=resource_type,
         select=select,
         models=models,
         exclude=exclude,
         selector=selector,
+        project_dir=project_dir,
+        profiles_dir=profiles_dir,
+        profile=profile,
+        target=target,
+        vars=vars,
+        bypass_cache=bypass_cache,
         state=state,
-        **common_dbt_kwargs,
+        log_level=log_level,
     )
-    create_all_property_files(
+    _create_all_property_files(
         ctx, transformed_ls_results, threads=threads, **common_dbt_kwargs
     )
 
 
 @task(
-    help=UPDATE_AND_DELETE_HELP,
+    help=_update_and_delete_help,
     auto_shortflags=False,
 )
 def delete(
@@ -170,30 +168,23 @@ def delete(
         (DEBUG, INFO, WARNING, ERROR, CRITICAL)
     :return: None
     """
-    if log_level:
-        LOGGER.setLevel(log_level.upper())
-    assert_supported_resource_type(resource_type)
-    utils.get_project_info(ctx, project_dir=project_dir, logger=LOGGER)
-    common_dbt_kwargs = {
-        'project_dir': project_dir or ctx.config['project_path'],
-        'profiles_dir': profiles_dir,
-        'profile': profile,
-        'target': target,
-        'vars': vars,
-        'bypass_cache': bypass_cache,
-    }
-    # Get the paths of the property files to delete
-    transformed_ls_results = transform_ls_results(
+    _, transformed_ls_results = _initiate_alterations(
         ctx,
         resource_type=resource_type,
         select=select,
         models=models,
         exclude=exclude,
         selector=selector,
+        project_dir=project_dir,
+        profiles_dir=profiles_dir,
+        profile=profile,
+        target=target,
+        vars=vars,
+        bypass_cache=bypass_cache,
         state=state,
-        **common_dbt_kwargs,
+        log_level=log_level,
     )
-    delete_all_property_files(ctx, transformed_ls_results)
+    _delete_all_property_files(ctx, transformed_ls_results)
 
 
 @task
@@ -205,13 +196,51 @@ def echo_macro(ctx):
     :param ctx: An Invoke context object
     :return: None
     """
-    LOGGER.info(
+    _LOGGER.info(
         f'Copy and paste the following macro into your dbt project:'
-        f'\n{utils.get_macro(MACRO_NAME)}'
+        f'\n{_utils.get_macro(_MACRO_NAME)}'
     )
 
 
-def transform_ls_results(ctx, **kwargs):
+def _initiate_alterations(ctx, **kwargs):
+    """
+    Delete property file(s) for the specified set of resources
+
+    :param ctx: An Invoke context object
+    :param kwargs:
+    :return: A tuple of dbt keyword arguments that are common to
+        multiple dbt commands
+    """
+    if kwargs.get('log_level'):
+        _LOGGER.setLevel(kwargs.get('log_level').upper())
+    resource_type = kwargs.get('resource_type')
+    _assert_supported_resource_type(resource_type)
+    project_dir = kwargs.get('project_dir')
+    _utils.get_project_info(ctx, project_dir=project_dir)
+    common_dbt_kwargs = {
+        'project_dir': project_dir or ctx.config['project_path'],
+        'profiles_dir': kwargs.get('profiles_dir'),
+        'profile': kwargs.get('profile'),
+        'target': kwargs.get('target'),
+        'vars': kwargs.get('vars'),
+        'bypass_cache': kwargs.get('bypass_cache'),
+    }
+    # Get the paths and resource types of the
+    # resources for which to create property files
+    transformed_ls_results = _transform_ls_results(
+        ctx,
+        resource_type=resource_type,
+        select=kwargs.get('select'),
+        models=kwargs.get('models'),
+        exclude=kwargs.get('exclude'),
+        selector=kwargs.get('selector'),
+        state=kwargs.get('state'),
+        **common_dbt_kwargs,
+    )
+    return common_dbt_kwargs, transformed_ls_results
+
+
+def _transform_ls_results(ctx, **kwargs):
     """
     Run the "dbt ls" command to select resources and determine their
     resource type and path. Then filter out unsupported resource types
@@ -224,17 +253,17 @@ def transform_ls_results(ctx, **kwargs):
         and the value is dictionary form of the resource's json
     """
     # Run dbt ls to retrieve resource path and json information
-    LOGGER.info('Searching for matching resources...')
-    result_lines_path = utils.dbt_ls(
+    _LOGGER.info('Searching for matching resources...')
+    result_lines_path = _utils.dbt_ls(
         ctx,
-        supported_resource_types=SUPPORTED_RESOURCE_TYPES,
-        logger=LOGGER,
+        supported_resource_types=_SUPPORTED_RESOURCE_TYPES,
+        logger=_LOGGER,
         **kwargs,
     )
-    result_lines_dict = utils.dbt_ls(
+    result_lines_dict = _utils.dbt_ls(
         ctx,
-        supported_resource_types=SUPPORTED_RESOURCE_TYPES,
-        logger=LOGGER,
+        supported_resource_types=_SUPPORTED_RESOURCE_TYPES,
+        logger=_LOGGER,
         output='json',
         **kwargs,
     )
@@ -243,20 +272,20 @@ def transform_ls_results(ctx, **kwargs):
     results = {
         k: v
         for k, v in results.items()
-        if v['resource_type'] in SUPPORTED_RESOURCE_TYPES
+        if v['resource_type'] in _SUPPORTED_RESOURCE_TYPES
         and Path(ctx.config['project_path'], k).exists()
     }
-    LOGGER.info(
+    _LOGGER.info(
         f"Found {len(results)} matching resources in dbt project"
         f' "{ctx.config["project_name"]}"'
     )
-    if LOGGER.level <= 10:
+    if _LOGGER.level <= 10:
         for resource in results:
-            LOGGER.debug(resource)
+            _LOGGER.debug(resource)
     return results
 
 
-def create_all_property_files(
+def _create_all_property_files(
     ctx, transformed_ls_results, threads=1, **kwargs
 ):
     """
@@ -271,29 +300,78 @@ def create_all_property_files(
         and in creating/updating the corresponding property files. Each
         thread will run dbt's get_columns_in_query macro against the
         data warehouse.
-    :param kwargs: Additional arguments for utils.dbt_run_operation
+    :param kwargs: Additional arguments for _utils.dbt_run_operation
         (run "dbt run-operation --help" for details)
     :return: None
     """
+    # Run a check that will fail if the _MACRO_NAME macro does not exist
+    if not _utils.macro_exists(ctx, _MACRO_NAME, logger=_LOGGER, **kwargs):
+        _utils.add_macro(ctx, _MACRO_NAME, logger=_LOGGER)
+    # Handle the creation of property files in separate threads
     transformed_ls_results_length = len(transformed_ls_results)
-    partial_create_property_file = partial(
-        create_property_file,
-        ctx,
-        total=transformed_ls_results_length,
-        **kwargs,
-    )
-    counters = range(1, 1 + transformed_ls_results_length)
     with ThreadPoolExecutor(max_workers=threads) as executor:
-        results = executor.map(
-            partial_create_property_file,
-            transformed_ls_results.keys(),
-            transformed_ls_results.values(),
-            counters,
-        )
-        list(results)
+        futures = {
+            executor.submit(
+                _create_property_file,
+                ctx,
+                k,
+                v,
+                i + 1,
+                transformed_ls_results_length,
+                **kwargs,
+            ): {'index': i + 1, 'resource_location': k}
+            for i, (k, v) in enumerate(transformed_ls_results.items())
+        }
+        # Log success or failure for each thread
+        successes = 0
+        failures = 0
+        for future in as_completed(futures):
+            index = futures[future]['index']
+            resource_location = futures[future]['resource_location']
+            progress = (
+                f'Resource {index} of {transformed_ls_results_length},'
+                f' {resource_location}'
+            )
+            if future.exception() is not None:
+                _LOGGER.error(f'{"[FAILURE]":>{_PROGRESS_PADDING}} {progress}')
+                failures += 1
+                # Store exception message for later when all tracebacks
+                # for failed futures will be logged
+                e = future.exception()
+                exception_lines = traceback.format_exception(
+                    type(e), e, e.__traceback__
+                )
+                futures[future][
+                    'exception_message'
+                ] = f'{progress}\n{"".join(exception_lines)}'
+            else:
+                _LOGGER.info(f'{"[SUCCESS]":>{_PROGRESS_PADDING}} {progress}')
+                successes += 1
+    # Log traceback for all failures at the end
+    if failures:
+        exception_messages = list()
+        # Looping through futures instead of as_completed(futures) so
+        # that the failed futures are displayed in order of submission,
+        # rather than completion
+        for future in futures:
+            exception_message = futures[future].get('exception_message')
+            if exception_message:
+                exception_messages.append(exception_message)
+        if exception_messages:
+            exception_messages = '\n'.join(exception_messages)
+            _LOGGER.error(
+                f'Tracebacks for all failures:\n\n{exception_messages}'
+            )
+    # Log result summary
+    _LOGGER.info(
+        f'{"[DONE]":>{_PROGRESS_PADDING}}'
+        f' Total: {successes+failures},'
+        f' Successes: {successes},'
+        f' Failures: {failures}'
+    )
 
 
-def delete_all_property_files(ctx, transformed_ls_results):
+def _delete_all_property_files(ctx, transformed_ls_results):
     """
     For each resource from dbt ls,
     delete the property file if user confirms
@@ -313,7 +391,7 @@ def delete_all_property_files(ctx, transformed_ls_results):
         for rp in resource_paths
         if rp.with_suffix('.yml').exists()
     ]
-    LOGGER.info(
+    _LOGGER.info(
         f'{len(property_paths)} of {len(resource_paths)}'
         f' have existing property files'
     )
@@ -341,14 +419,14 @@ def delete_all_property_files(ctx, transformed_ls_results):
         if deletion_confirmation.lower() == 'y':
             for file in property_paths:
                 os.remove(file)
-            LOGGER.info('Deletion confirmed.')
+            _LOGGER.info('Deletion confirmed.')
         else:
-            LOGGER.info('Deletion aborted.')
+            _LOGGER.info('Deletion aborted.')
     else:
-        LOGGER.info('There are no files to delete.')
+        _LOGGER.info('There are no files to delete.')
 
 
-def create_property_file(
+def _create_property_file(
     ctx, resource_location, resource_dict, counter, total, **kwargs
 ):
     """
@@ -363,23 +441,26 @@ def create_property_file(
         progress of file creation)
     :param total: An integer representing the total number of files to
         be created (for logging the progress of file creation)
-    :param kwargs: Additional arguments for utils.dbt_run_operation
+    :param kwargs: Additional arguments for _utils.dbt_run_operation
         (run "dbt run-operation --help" for details)
     :return: None
     """
+    _LOGGER.info(
+        f'{"[START]":>{_PROGRESS_PADDING}}'
+        f' Resource {counter} of {total},'
+        f' {resource_location}'
+    )
+    columns = _get_columns(ctx, resource_location, resource_dict, **kwargs)
     property_path = Path(
         ctx.config['project_path'], resource_location
     ).with_suffix('.yml')
-    LOGGER.info(f'Starting: {counter}/{total}... {property_path.name}')
-    columns = get_columns(ctx, resource_location, resource_dict, **kwargs)
-    property_file_dict = structure_property_file_dict(
+    property_file_dict = _structure_property_file_dict(
         property_path, resource_dict, columns
     )
-    utils.write_yaml(property_path, property_file_dict)
-    LOGGER.info(f'Completed: {counter}/{total}... {property_path.name}')
+    _utils.write_yaml(property_path, property_file_dict)
 
 
-def get_columns(ctx, resource_location, resource_dict, **kwargs):
+def _get_columns(ctx, resource_location, resource_dict, **kwargs):
     """
     Get a list of the column names in a resource
 
@@ -388,7 +469,7 @@ def get_columns(ctx, resource_location, resource_dict, **kwargs):
         resource
     :param resource_dict: A dictionary representing the json output for
         this resource from the "dbt ls" command
-    :param kwargs: Additional arguments for utils.dbt_run_operation
+    :param kwargs: Additional arguments for _utils.dbt_run_operation
         (run "dbt run-operation --help" for details)
     :return: A list of the column names in the resource
     """
@@ -397,14 +478,17 @@ def get_columns(ctx, resource_location, resource_dict, **kwargs):
     resource_type = resource_dict['resource_type']
     resource_name = resource_dict['name']
     if materialized != 'ephemeral' and resource_type != 'analysis':
-        result_lines = utils.dbt_run_operation(
+        result_lines = _utils.dbt_run_operation(
             ctx,
-            MACRO_NAME,
+            _MACRO_NAME,
             hide=True,
-            logger=LOGGER,
+            logger=_LOGGER,
             resource_name=resource_name,
             **kwargs,
         )
+    # Ephemeral and analysis resource types are not materialized in the
+    # data warehouse, so the compiled versions of their SQL statements
+    # are used instead
     else:
         resource_path = Path(ctx.config['compiled_path'], resource_path)
         with open(resource_path, 'r') as f:
@@ -412,8 +496,8 @@ def get_columns(ctx, resource_location, resource_dict, **kwargs):
         # Get and clean the SQL code
         lines = [line.strip() for line in lines if line.strip()]
         sql = "\n".join(lines)
-        result_lines = utils.dbt_run_operation(
-            ctx, MACRO_NAME, hide=True, logger=LOGGER, sql=sql, **kwargs
+        result_lines = _utils.dbt_run_operation(
+            ctx, _MACRO_NAME, hide=True, logger=_LOGGER, sql=sql, **kwargs
         )
     result_list_strings = [
         s for s in result_lines if s.startswith('[') and s.endswith(']')
@@ -425,7 +509,7 @@ def get_columns(ctx, resource_location, resource_dict, **kwargs):
     return columns
 
 
-def structure_property_file_dict(location, resource_dict, columns_list):
+def _structure_property_file_dict(location, resource_dict, columns_list):
     """
     Structure a dictionary that will be used to create a property file
 
@@ -440,13 +524,13 @@ def structure_property_file_dict(location, resource_dict, columns_list):
     resource_name = resource_dict['name']
     # If the property file already exists, read it into a dictionary.
     if location.exists():
-        property_file_dict = utils.parse_yaml(location)
+        property_file_dict = _utils.parse_yaml(location)
     # Else create a new dictionary that
     # will be used to create a new property file.
     else:
-        property_file_dict = get_property_header(resource_name, resource_type)
+        property_file_dict = _get_property_header(resource_name, resource_type)
     # Get the sub-dictionaries of each existing column
-    resource_type_plural = SUPPORTED_RESOURCE_TYPES[resource_type]
+    resource_type_plural = _SUPPORTED_RESOURCE_TYPES[resource_type]
     existing_columns_dict = {
         item['name']: item
         for item in property_file_dict[resource_type_plural][0]['columns']
@@ -456,14 +540,16 @@ def structure_property_file_dict(location, resource_dict, columns_list):
     # or else create a new sub-dictionary
     property_file_dict[resource_type_plural][0]['columns'] = list()
     for column in columns_list:
-        column_dict = existing_columns_dict.get(column, get_property_column(column))
+        column_dict = existing_columns_dict.get(
+            column, _get_property_column(column)
+        )
         property_file_dict[resource_type_plural][0]['columns'].append(
             column_dict
         )
     return property_file_dict
 
 
-def get_property_header(resource, resource_type):
+def _get_property_header(resource, resource_type):
     """
     Create a dictionary representing resources properties
 
@@ -474,14 +560,14 @@ def get_property_header(resource, resource_type):
     """
     header_dict = {
         'version': 2,
-        SUPPORTED_RESOURCE_TYPES[resource_type]: [
+        _SUPPORTED_RESOURCE_TYPES[resource_type]: [
             {'name': resource, 'description': "", 'columns': []}
         ],
     }
     return header_dict
 
 
-def get_property_column(column_name):
+def _get_property_column(column_name):
     """
     Create a dictionary representing column properties
 
@@ -492,7 +578,7 @@ def get_property_column(column_name):
     return column_dict
 
 
-def assert_supported_resource_type(resource_type):
+def _assert_supported_resource_type(resource_type):
     """
     Assert that the given resource type is in the list of supported
         resource types
@@ -503,12 +589,12 @@ def assert_supported_resource_type(resource_type):
     try:
         assert (
             resource_type is None
-            or resource_type.lower() in SUPPORTED_RESOURCE_TYPES
+            or resource_type.lower() in _SUPPORTED_RESOURCE_TYPES
         )
     except AssertionError:
         msg = (
             f'Sorry, this tool only supports the following resource types:'
-            f' {list(SUPPORTED_RESOURCE_TYPES.keys())}'
+            f' {list(_SUPPORTED_RESOURCE_TYPES.keys())}'
         )
-        LOGGER.exception(msg)
+        _LOGGER.exception(msg)
         raise

@@ -20,3 +20,9 @@ dbt-sqlite:
       # as schema name, and where new schema are created. this can overlap with the dirs of
       # files in schemas_and_paths as long as there's no conflicts.
       schema_directory: '.'
+      # "extensions" is defined to get around the following error in
+      # dbt version 0.19.1:
+      # Field "extensions" of type typing.Union[str, NoneType] is
+      # missing in dbt.adapters.sqlite.connections.SQLiteCredentials
+      # instance
+      extensions: "{{ 'None' | as_native }}"

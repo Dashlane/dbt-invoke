@@ -1,26 +1,10 @@
 import json
 import logging
-import sys
 from pathlib import Path
 
+import sys
 import yaml
 from dbt.task.base import get_nearest_project_dir
-
-PROPERTIES = {
-    'supported_resource_types': {
-        'model': 'models',
-        'seed': 'seeds',
-        'snapshot': 'snapshots',
-        'analysis': 'analyses',
-    },
-    'resource_selection_arguments': [
-        'resource_type',
-        'select',
-        'models',
-        'exclude',
-        'selector',
-    ],
-}
 
 MACROS = {
     '_log_columns_list': (
@@ -35,25 +19,23 @@ MACROS = {
         "\n{% endmacro %}\n"
     )
 }
-
-DBT_CLI_LS_ARGS = [
-    'resource-type',
-    'select',
-    'models',
-    'exclude',
-    'selector',
-    'project-dir',
-    'profiles-dir',
-    'profile',
-    'target',
-    'vars',
-    'bypass-cache',
-    'state',
-]
-
 DBT_LS_ARG_HELP = (
     'An argument for listing dbt resources (run "dbt ls --help" for details)'
 )
+DBT_LS_ARGS = {
+    'resource_type': {'help': DBT_LS_ARG_HELP, 'resource_selector': True},
+    'select': {'help': DBT_LS_ARG_HELP, 'resource_selector': True},
+    'models': {'help': DBT_LS_ARG_HELP, 'resource_selector': True},
+    'exclude': {'help': DBT_LS_ARG_HELP, 'resource_selector': True},
+    'selector': {'help': DBT_LS_ARG_HELP, 'resource_selector': True},
+    'project_dir': {'help': DBT_LS_ARG_HELP, 'resource_selector': False},
+    'profiles_dir': {'help': DBT_LS_ARG_HELP, 'resource_selector': False},
+    'profile': {'help': DBT_LS_ARG_HELP, 'resource_selector': False},
+    'target': {'help': DBT_LS_ARG_HELP, 'resource_selector': False},
+    'vars': {'help': DBT_LS_ARG_HELP, 'resource_selector': False},
+    'bypass_cache': {'help': DBT_LS_ARG_HELP, 'resource_selector': False},
+    'state': {'help': DBT_LS_ARG_HELP, 'resource_selector': False},
+}
 
 
 def get_logger(name, level='INFO'):
@@ -69,7 +51,9 @@ def get_logger(name, level='INFO'):
     if logger.hasHandlers():
         logger.handlers.clear()
     handler = logging.StreamHandler(stream=sys.stdout)
-    formatter = logging.Formatter('{name}[{levelname}]:: {message}', style='{')
+    formatter = logging.Formatter(
+        '{name} | {levelname:^8} | {message}', style='{'
+    )
     handler.setFormatter(formatter)
     logger.addHandler(handler)
     logger.setLevel(level.upper())
@@ -96,7 +80,7 @@ def write_yaml(location, data):
     Write a yaml file
 
     :param location: The location to which to write the yaml file
-    :param data: A Python object
+    :param data: The object which will be written to the yaml file
     :return: None
     """
     try:
@@ -106,18 +90,15 @@ def write_yaml(location, data):
         sys.exit(exc)
 
 
-def get_project_info(ctx, project_dir=None, logger=None):
+def get_project_info(ctx, project_dir=None):
     """
     Get project level configurations for a dbt project
     and store them in ctx (an Invoke context object)
 
     :param ctx: An Invoke context object
     :param project_dir: A directory containing a dbt_project.yml file
-    :param logger: A logging.Logger object
     :return: None
     """
-    if not logger:
-        logger = get_logger('')
     project = Project(project_dir)
     project_path = get_nearest_project_dir(project)
     project_yml_path = Path(project_path, 'dbt_project.yml')
@@ -165,11 +146,9 @@ def dbt_ls(
     if not logger:
         logger = get_logger('')
     resource_selection_arguments = {
-        'resource_type': kwargs.get('resource_type'),
-        'select': kwargs.get('select'),
-        'models': kwargs.get('models'),
-        'exclude': kwargs.get('exclude'),
-        'selector': kwargs.get('selector'),
+        arg: kwargs.get(arg)
+        for arg, details in DBT_LS_ARGS.items()
+        if details['resource_selector']
     }
     # Use default arguments if no resource selection arguments are given
     default_arguments = list()
@@ -223,17 +202,17 @@ def dbt_run_operation(
 
     :param ctx: An Invoke context object
     :param macro_name: Name of macro that will be run
-    :param project_dir: An argument for utils.dbt_run_operation
+    :param project_dir: An argument for _utils.dbt_run_operation
         (run "dbt run-operation --help" for details)
-    :param profiles_dir: An argument for utils.dbt_run_operation
+    :param profiles_dir: An argument for _utils.dbt_run_operation
         (run "dbt run-operation --help" for details)
-    :param profile: An argument for utils.dbt_run_operation
+    :param profile: An argument for _utils.dbt_run_operation
         (run "dbt run-operation --help" for details)
-    :param target: An argument for utils.dbt_run_operation
+    :param target: An argument for _utils.dbt_run_operation
         (run "dbt run-operation --help" for details)
-    :param vars: An argument for utils.dbt_run_operation
+    :param vars: An argument for _utils.dbt_run_operation
         (run "dbt run-operation --help" for details)
-    :param bypass_cache: An argument for utils.dbt_run_operation
+    :param bypass_cache: An argument for _utils.dbt_run_operation
         (run "dbt run-operation --help" for details)
     :param hide: Whether to suppress command line logs
     :param logger: A logging.Logger object
@@ -257,26 +236,7 @@ def dbt_run_operation(
         f" {macro_name} --args '{macro_kwargs}'"
     )
     logger.debug(f'Running command: {command}')
-    result = ctx.run(command, hide=hide, warn=True)
-    if result.failed:
-        # If error is because the configured macro is not found,
-        # prompt the user to add the macro
-        if all(
-            [
-                s in result.stdout.lower()
-                for s in ['runtime error', 'not', 'find', macro_name]
-            ]
-        ):
-            logger.warning(
-                f'This command requires the following macro:'
-                f'\n{get_macro(macro_name)}'
-            )
-            add_macro(ctx, macro_name, logger=logger)
-            logger.debug(f'Running command: {command}')
-            result = ctx.run(command, hide=hide, warn=True)
-        else:
-            logger.error(f'{result.stdout}')
-            sys.exit()
+    result = ctx.run(command, hide=hide)
     result_lines = result.stdout.splitlines()[1:]
     return result_lines
 
@@ -291,9 +251,33 @@ def get_macro(macro_name):
     return MACROS[macro_name]
 
 
+def macro_exists(ctx, macro_name, logger=None, **kwargs):
+    if not logger:
+        logger = get_logger('')
+    try:
+        dbt_run_operation(
+            ctx,
+            macro_name,
+            logger=logger,
+            sql=f'SELECT 1 AS __dbt_invoke_check_macro_{macro_name} LIMIT 0',
+            **kwargs,
+        )
+    except Exception as exc:
+        if all(
+            [
+                s in str(exc).lower()
+                for s in ['runtime error', 'not', 'find', macro_name]
+            ]
+        ):
+            return False
+        else:
+            logger.exception(exc)
+    return True
+
+
 def add_macro(ctx, macro_name, logger=None):
     """
-    Add a macro to a dbt project if user confirms
+    Add a macro to a dbt project if the user confirms
 
     :param ctx: An Invoke context object
     :param macro_name: The name of the macro to add
@@ -303,6 +287,10 @@ def add_macro(ctx, macro_name, logger=None):
     if not logger:
         logger = get_logger('')
     location = Path(ctx.config['macro_paths'][0], f'{macro_name}.sql')
+    logger.warning(
+        f'This command requires the following macro:'
+        f'\n{get_macro(macro_name)}'
+    )
     question = (
         f'Would you like to add the macro "{macro_name}"'
         f' to the following location?:\n{location}'

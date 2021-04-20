@@ -2,14 +2,14 @@ from pathlib import Path
 
 from setuptools import setup, find_packages
 
-from dbt_invoke import version
+from dbt_invoke.internal import _version
 
 PARENT_DIR = Path(__file__).parent
 README = Path(PARENT_DIR, 'README.md').read_text()
 
 setup(
     name='dbt-invoke',
-    version=version.__version__,
+    version=_version.__version__,
     author='Robert Astel, Jennifer Zhan, Vincent Dragonette',
     author_email='rob.astel@gmail.com',
     license='Apache License 2.0',

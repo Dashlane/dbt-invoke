@@ -4,8 +4,10 @@ from pathlib import Path
 from unittest.mock import patch
 
 import invoke
+import sys
 
-from dbt_invoke import utils, properties
+from dbt_invoke import properties
+from dbt_invoke.internal import _utils
 
 PARENT_DIR = Path(__file__).parent
 
@@ -18,21 +20,17 @@ class TestDbtInvoke(unittest.TestCase):
 
         :return: None
         """
-        cls.logger = utils.get_logger('dbt-invoke', level='DEBUG')
+        cls.logger = _utils.get_logger('dbt-invoke', level='DEBUG')
         cls.config_path = Path(PARENT_DIR, 'test_config.yml')
-        cls.config = utils.parse_yaml(cls.config_path)
+        cls.config = _utils.parse_yaml(cls.config_path)
         cls.project_dir = Path(PARENT_DIR, cls.config['project_name'])
         cls.profiles_dir = Path(PARENT_DIR, cls.config['project_name'])
         cls.expected_properties = cls.config['expected_properties']
         cls.expected_dbt_ls_results = cls.config['expected_dbt_ls_results']
         cls.ctx = invoke.Context()
-        utils.get_project_info(
-            cls.ctx,
-            project_dir=cls.project_dir,
-            logger=cls.logger,
-        )
+        _utils.get_project_info(cls.ctx, project_dir=cls.project_dir)
         cls.macro_name = '_log_columns_list'
-        cls.macro_value = utils.MACROS[cls.macro_name]
+        cls.macro_value = _utils.MACROS[cls.macro_name]
         cls.macro_path = Path(
             cls.ctx.config['macro_paths'][0],
             f'{cls.macro_name}.sql',
@@ -88,4 +86,5 @@ if __name__ == '__main__':
     loader = unittest.TestLoader()
     suite = loader.discover(PARENT_DIR)
     runner = unittest.TextTestRunner(verbosity=2)
-    runner.run(suite)
+    result = runner.run(suite)
+    sys.exit(not result.wasSuccessful())
