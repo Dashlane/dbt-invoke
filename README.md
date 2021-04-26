@@ -109,9 +109,13 @@ dbt-invoke properties <options>
   - --state
 
 
-- Note: This tool supports only the long flags of `dbt ls` options (for 
-  example: `--models`, and not short flags like `-m`).
-  
+- Notes: 
+  - This tool supports only the long flags of `dbt ls` options (for 
+  example: `--models`, and not short flags like `-m`)
+  - Multiple values for the same argument can be passed as a comma separated
+  string (Example: `--models modelA,modelB`)
+    - Keep in mind that dbt may not support multiple values for certain options
+
 
 - Two additional flags are made available.
   - `--log-level` to alter the verbosity of logs.
@@ -133,6 +137,9 @@ dbt-invoke properties <options>
   
   # Create/update property files for all models in a models/marts directory
   dbt-invoke properties --models marts
+  
+  # Create/update property files for a 'users' model and an 'orders' models
+  dbt-invoke properties --models users,orders
   
   # Create/update property files for a 'users' model and all downstream models
   dbt-invoke properties --models users+
@@ -173,9 +180,9 @@ dbt-invoke properties.delete <options>
 
 - When updating existing files, formatting and comments are not preserved.
 - In order to collect or update the list of columns that should appear in 
-  each property file, dbt's get_columns_in_query macro is run for each matching
-  resource. As of the time of writing, get_columns_in_query uses a SELECT 
-  statement [limited to zero rows](https://github.com/fishtown-analytics/dbt/blob/2b48152da66dbd7f07272983bbc261f1b6924f20/core/dbt/include/global_project/macros/adapters/common.sql#L11).
+  each property file, dbt's `get_columns_in_query` macro is run for each
+  matching resource. As of the time of writing, `get_columns_in_query` uses a
+  SELECT statement [limited to zero rows](https://github.com/fishtown-analytics/dbt/blob/2b48152da66dbd7f07272983bbc261f1b6924f20/core/dbt/include/global_project/macros/adapters/common.sql#L11).
   While this is not typically a performance issue for table or incremental 
   materializations, execution may be slow for complex analyses, views, or 
   ephemeral materializations. 
