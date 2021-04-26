@@ -111,10 +111,11 @@ dbt-invoke properties <options>
 
 - Notes: 
   - This tool supports only the long flags of `dbt ls` options (for 
-  example: `--models`, and not short flags like `-m`)
+  example: `--models`, and not short flags like `-m`).
   - Multiple values for the same argument can be passed as a comma separated
   string (Example: `--models modelA,modelB`)
-    - Keep in mind that dbt may not support multiple values for certain options
+    - Keep in mind that dbt may not support multiple values for certain 
+      options.
 
 
 - Two additional flags are made available.
