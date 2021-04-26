@@ -204,12 +204,15 @@ def echo_macro(ctx):
 
 def _initiate_alterations(ctx, **kwargs):
     """
-    Delete property file(s) for the specified set of resources
+    Retrieve the dbt keyword arguments that are common to multiple dbt
+    commands as well as the transformed results of the "dbt ls" command
 
     :param ctx: An Invoke context object
     :param kwargs:
-    :return: A tuple of dbt keyword arguments that are common to
-        multiple dbt commands
+    :return: A 2-tuple of:
+        1. The dbt keyword arguments that are common to multiple dbt
+        commands
+        2. The transformed results of the "dbt ls" command
     """
     if kwargs.get('log_level'):
         _LOGGER.setLevel(kwargs.get('log_level').upper())

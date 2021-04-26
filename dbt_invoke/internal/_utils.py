@@ -1,9 +1,10 @@
 import json
 import logging
 from pathlib import Path
-
 import sys
+
 import yaml
+
 from dbt.task.base import get_nearest_project_dir
 
 MACROS = {
@@ -179,7 +180,11 @@ def get_cli_kwargs(**kwargs):
     :return: CLI keyword arguments
     """
     return ' '.join(
-        [f'--{k.replace("_", "-")} {v}' for k, v in kwargs.items() if v]
+        [
+            f'--{k.replace("_", "-")} {str(v).replace(",", " ")}'
+            for k, v in kwargs.items()
+            if v
+        ]
     )
 
 
@@ -202,17 +207,17 @@ def dbt_run_operation(
 
     :param ctx: An Invoke context object
     :param macro_name: Name of macro that will be run
-    :param project_dir: An argument for _utils.dbt_run_operation
+    :param project_dir: An argument for the dbt run-operation command
         (run "dbt run-operation --help" for details)
-    :param profiles_dir: An argument for _utils.dbt_run_operation
+    :param profiles_dir: An argument for the dbt run-operation command
         (run "dbt run-operation --help" for details)
-    :param profile: An argument for _utils.dbt_run_operation
+    :param profile: An argument for the dbt run-operation command
         (run "dbt run-operation --help" for details)
-    :param target: An argument for _utils.dbt_run_operation
+    :param target: An argument for the dbt run-operation command
         (run "dbt run-operation --help" for details)
-    :param vars: An argument for _utils.dbt_run_operation
+    :param vars: An argument for the dbt run-operation command
         (run "dbt run-operation --help" for details)
-    :param bypass_cache: An argument for _utils.dbt_run_operation
+    :param bypass_cache: An argument for the dbt run-operation command
         (run "dbt run-operation --help" for details)
     :param hide: Whether to suppress command line logs
     :param logger: A logging.Logger object
@@ -252,6 +257,15 @@ def get_macro(macro_name):
 
 
 def macro_exists(ctx, macro_name, logger=None, **kwargs):
+    """
+    Check if a given macro name exists in the dbt project
+
+    :param ctx: An Invoke context object
+    :param macro_name: The name of the macro to check for
+    :param logger: A logging.Logger object
+    :param kwargs: Additional arguments for dbt_run_operation
+    :return: True if the macro exists, else False
+    """
     if not logger:
         logger = get_logger('')
     try:
@@ -343,5 +357,14 @@ def add_macro(ctx, macro_name, logger=None):
 
 
 class Project:
+    """
+    A placeholder class for use with get_nearest_project_dir
+    """
+
     def __init__(self, project_dir=None):
+        """
+        Initialize a Project object
+
+        :param project_dir:
+        """
         self.project_dir = project_dir

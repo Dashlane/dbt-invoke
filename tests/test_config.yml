@@ -84,6 +84,9 @@ expected_dbt_ls_results:
   models:
     customers:
       - models/marts/core/customers.sql
+    customers,orders:
+      - models/marts/core/customers.sql
+      - models/marts/core/orders.sql
   exclude:
     customers:
       - models/marts/core/orders.sql
