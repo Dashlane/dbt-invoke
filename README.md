@@ -189,3 +189,5 @@ dbt-invoke properties.delete <options>
   ephemeral materializations. 
   - This may be partially remedied by increasing the value of the `--threads` 
     option in `dbt-invoke properties.update`.
+- dbt-invoke was developed with Python 3.6 to 3.8 and dbt 0.18 to 0.19 in mind.
+  It has not been tested across different types of data warehouses.
