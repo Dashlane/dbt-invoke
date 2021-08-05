@@ -1,6 +1,6 @@
 agate<1.6.2
 cryptography<3
-dbt~=0.18.0
+dbt-core~=0.18.0
 dbt-sqlite~=0.0.4
 invoke>=1.4.1
 PyYAML

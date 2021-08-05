@@ -11,5 +11,7 @@ LEFT JOIN
     ON o.item_id = i.item_id
     AND o.order_at >= i.dbt_valid_from
     AND o.order_at < COALESCE(i.dbt_valid_to, CURRENT_TIMESTAMP)
+WHERE
+    o.order_at >= '1970-01-01 00:00:00'
 GROUP BY
     CAST(c.created_at AS DATE)

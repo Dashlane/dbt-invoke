@@ -35,7 +35,7 @@ class TestUtils(TestDbtInvoke):
         :return: None
         """
         for db_ls_kwarg, values in self.expected_dbt_ls_results.items():
-            for value, expected_result_lines in values.items():
+            for value, expected_result_parts in values.items():
                 dbt_ls_kwargs = {db_ls_kwarg: value}
                 result_lines = _utils.dbt_ls(
                     self.ctx,
@@ -45,7 +45,10 @@ class TestUtils(TestDbtInvoke):
                     logger=self.logger,
                     **dbt_ls_kwargs,
                 )
-                self.assertCountEqual(result_lines, expected_result_lines)
+                result_parts = [
+                    list(Path(line).parts) for line in result_lines
+                ]
+                self.assertCountEqual(result_parts, expected_result_parts)
 
 
 if __name__ == '__main__':

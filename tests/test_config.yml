@@ -69,37 +69,51 @@ expected_properties:
 expected_dbt_ls_results:
   resource_type:
     model:
-      - models/marts/core/customers.sql
-      - models/marts/core/orders.sql
+      - &customers
+        - models
+        - marts
+        - core
+        - customers.sql
+      - &orders
+        - models
+        - marts
+        - core
+        - orders.sql
     seed:
-      - data/items.csv
+      - &items
+        - data
+        - items.csv
     snapshot:
-      - snapshots/items_snapshot.sql
+      - &items_snapshot
+        - snapshots
+        - items_snapshot.sql
     analysis:
-      - analyses/revenue_by_daily_cohort.sql
+      - &revenue_by_daily_cohort
+        - analyses
+        - revenue_by_daily_cohort.sql
   select:
     marts.core:
-      - models/marts/core/customers.sql
-      - models/marts/core/orders.sql
+      - *customers
+      - *orders
   models:
     customers:
-      - models/marts/core/customers.sql
+      - *customers
     customers,orders:
-      - models/marts/core/customers.sql
-      - models/marts/core/orders.sql
+      - *customers
+      - *orders
   exclude:
     customers:
-      - models/marts/core/orders.sql
-      - data/items.csv
-      - snapshots/items_snapshot.sql
+      - *orders
+      - *items
+      - *items_snapshot
   selector:
     test_selector:
-      - models/marts/core/orders.sql
-      - snapshots/items_snapshot.sql
+      - *orders
+      - *items_snapshot
   '':
     '':
-      - models/marts/core/customers.sql
-      - models/marts/core/orders.sql
-      - data/items.csv
-      - snapshots/items_snapshot.sql
-      - analyses/revenue_by_daily_cohort.sql
+      - *customers
+      - *orders
+      - *items
+      - *items_snapshot
+      - *revenue_by_daily_cohort
