@@ -2,6 +2,7 @@ import json
 import logging
 from pathlib import Path
 import sys
+import platform
 
 import yaml
 
@@ -236,9 +237,20 @@ def dbt_run_operation(
     }
     dbt_cli_kwargs = get_cli_kwargs(**dbt_kwargs)
     macro_kwargs = json.dumps(kwargs, sort_keys=False)
+    if platform.system().lower().startswith('win'):
+        # Format YAML string for Windows Command Prompt
+        macro_kwargs = macro_kwargs.replace('"', '\\"')
+        macro_kwargs = macro_kwargs.replace('\\\\"', '"')
+        macro_kwargs = macro_kwargs.replace('>', '^>')
+        macro_kwargs = macro_kwargs.replace('<', '^<')
+        macro_kwargs = f'"{macro_kwargs}"'
+    else:
+        # Format YAML string for Mac/Linux (bash)
+        macro_kwargs = macro_kwargs.replace("'", """'"'"'""")
+        macro_kwargs = f"'{macro_kwargs}'"
     command = (
         f"dbt run-operation {dbt_cli_kwargs}"
-        f" {macro_name} --args '{macro_kwargs}'"
+        f" {macro_name} --args {macro_kwargs}"
     )
     logger.debug(f'Running command: {command}')
     result = ctx.run(command, hide=hide)
