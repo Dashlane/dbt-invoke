@@ -23,7 +23,7 @@ setup(
     packages=find_packages(),
     install_requires=[
         'invoke>=1.4.1',
-        'PyYAML',
+        'PyYAML>=5.1',
     ],
     python_requires='>=3.6.0',
     entry_points={
