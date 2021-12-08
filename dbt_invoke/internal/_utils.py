@@ -192,6 +192,7 @@ def get_cli_kwargs(**kwargs):
 def dbt_run_operation(
     ctx,
     macro_name,
+    log_format='json',
     project_dir=None,
     profiles_dir=None,
     profile=None,
@@ -208,6 +209,7 @@ def dbt_run_operation(
 
     :param ctx: An Invoke context object
     :param macro_name: Name of macro that will be run
+    :param log_format: Global cli flag to set the log format, including those send to stdout
     :param project_dir: An argument for the dbt run-operation command
         (run "dbt run-operation --help" for details)
     :param profiles_dir: An argument for the dbt run-operation command
@@ -236,6 +238,12 @@ def dbt_run_operation(
         'bypass_cache': bypass_cache,
     }
     dbt_cli_kwargs = get_cli_kwargs(**dbt_kwargs)
+
+    dbt_global_kwargs = {
+        'log-format': log_format
+    }
+    dbt_global_cli_kwargs = get_cli_kwargs(**dbt_global_kwargs)
+
     macro_kwargs = json.dumps(kwargs, sort_keys=False)
     if platform.system().lower().startswith('win'):
         # Format YAML string for Windows Command Prompt
@@ -249,12 +257,12 @@ def dbt_run_operation(
         macro_kwargs = macro_kwargs.replace("'", """'"'"'""")
         macro_kwargs = f"'{macro_kwargs}'"
     command = (
-        f"dbt run-operation {dbt_cli_kwargs}"
+        f"dbt {dbt_global_cli_kwargs} run-operation {dbt_cli_kwargs}"
         f" {macro_name} --args {macro_kwargs}"
     )
     logger.debug(f'Running command: {command}')
     result = ctx.run(command, hide=hide)
-    result_lines = result.stdout.splitlines()[1:]
+    result_lines = [json.loads(data) for data in result.stdout.splitlines()]
     return result_lines
 
 
