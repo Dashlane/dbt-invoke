@@ -30,7 +30,7 @@ jobs:
       matrix:
         os: [ubuntu-latest, macos-latest, windows-latest]
         python-version: [3.7, 3.x]
-        dbt-version: [0.18.x, 0.19.x]
+        dbt-version: [0.18.x, 0.19.x, 1.x]
         exclude:
           - python-version: 3.x
             dbt-version: 0.18.x
