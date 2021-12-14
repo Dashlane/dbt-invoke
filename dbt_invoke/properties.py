@@ -506,19 +506,16 @@ def _get_columns(ctx, resource_location, resource_dict, **kwargs):
 
     # from dbt-core v1.0.0 onwards, run_operations INFO logs have code M011 and messages have key 'msg'
     # https://github.com/dbt-labs/dbt-core/blob/22b1a09aa218e8152b0c2dd261abe2503ea15ddb/core/dbt/events/types.py#L401
-    relevant_line = list(filter(lambda x: x.get('code') == 'M011', result_lines))
-
-    if len(relevant_line) == 1:
-        columns = relevant_line[0].get('msg')
-
+    relevant_lines = list(filter(lambda x: x.get('code') == 'M011', result_lines))
+    if len(relevant_lines) >= 1:
+        columns = relevant_lines[-1].get('msg')
     else:
         # for older dbt-core versions, we need to cross fingers a little harder
-        relevant_line = result_lines[1:]
+        relevant_lines = result_lines[1:]
         # also, the message key is different
-        columns = relevant_line[0].get('message')
+        columns = relevant_lines[-1].get('message')
         # columns are not passed as valid json but as a string representation of a list
         columns = ast.literal_eval(columns)
-
     return columns
 
 
