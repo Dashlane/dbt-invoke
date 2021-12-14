@@ -192,7 +192,6 @@ def get_cli_kwargs(**kwargs):
 def dbt_run_operation(
     ctx,
     macro_name,
-    log_format='json',
     project_dir=None,
     profiles_dir=None,
     profile=None,
@@ -209,7 +208,6 @@ def dbt_run_operation(
 
     :param ctx: An Invoke context object
     :param macro_name: Name of macro that will be run
-    :param log_format: Global cli flag to set the log format, including those send to stdout
     :param project_dir: An argument for the dbt run-operation command
         (run "dbt run-operation --help" for details)
     :param profiles_dir: An argument for the dbt run-operation command
@@ -240,7 +238,7 @@ def dbt_run_operation(
     dbt_cli_kwargs = get_cli_kwargs(**dbt_kwargs)
 
     dbt_global_kwargs = {
-        'log-format': log_format
+        'log-format': 'json'
     }
     dbt_global_cli_kwargs = get_cli_kwargs(**dbt_global_kwargs)
 
