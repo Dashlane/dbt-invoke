@@ -33,7 +33,7 @@ jobs:
         python-version: [3.7, 3.9]
         dbt-version: [0.18.x, 0.19.x, 1.x]
         exclude:
-          - python-version: 3.x
+          - python-version: 3.9
             dbt-version: 0.18.x
     steps:
       - uses: actions/checkout@v2
