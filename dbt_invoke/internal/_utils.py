@@ -237,9 +237,7 @@ def dbt_run_operation(
     }
     dbt_cli_kwargs = get_cli_kwargs(**dbt_kwargs)
 
-    dbt_global_kwargs = {
-        'log-format': 'json'
-    }
+    dbt_global_kwargs = {'log-format': 'json'}
     dbt_global_cli_kwargs = get_cli_kwargs(**dbt_global_kwargs)
 
     macro_kwargs = json.dumps(kwargs, sort_keys=False)

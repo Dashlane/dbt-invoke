@@ -29,11 +29,21 @@ class TestDbtInvoke(unittest.TestCase):
 
         # for backward compatibility, select the correct dbt_project.yml file
         if pkg_resources.get_distribution("dbt-core").version >= '1.0.0':
-            shutil.copy(Path(PARENT_DIR, 'dbt_project_files/dbt_project.yml'),
-                        Path(PARENT_DIR, cls.config['project_name'], 'dbt_project.yml'))
+            shutil.copy(
+                Path(PARENT_DIR, 'dbt_project_files/dbt_project.yml'),
+                Path(
+                    PARENT_DIR, cls.config['project_name'], 'dbt_project.yml'
+                ),
+            )
         else:
-            shutil.copy(Path(PARENT_DIR, 'dbt_project_files/dbt_project_pre_dbt_v1.yml'),
-                        Path(PARENT_DIR, cls.config['project_name'], 'dbt_project.yml'))
+            shutil.copy(
+                Path(
+                    PARENT_DIR, 'dbt_project_files/dbt_project_pre_dbt_v1.yml'
+                ),
+                Path(
+                    PARENT_DIR, cls.config['project_name'], 'dbt_project.yml'
+                ),
+            )
 
         cls.project_dir = Path(PARENT_DIR, cls.config['project_name'])
         cls.profiles_dir = Path(PARENT_DIR, cls.config['project_name'])
