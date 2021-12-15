@@ -236,6 +236,10 @@ def dbt_run_operation(
         'bypass_cache': bypass_cache,
     }
     dbt_cli_kwargs = get_cli_kwargs(**dbt_kwargs)
+
+    dbt_global_kwargs = {'log-format': 'json'}
+    dbt_global_cli_kwargs = get_cli_kwargs(**dbt_global_kwargs)
+
     macro_kwargs = json.dumps(kwargs, sort_keys=False)
     if platform.system().lower().startswith('win'):
         # Format YAML string for Windows Command Prompt
@@ -249,12 +253,12 @@ def dbt_run_operation(
         macro_kwargs = macro_kwargs.replace("'", """'"'"'""")
         macro_kwargs = f"'{macro_kwargs}'"
     command = (
-        f"dbt run-operation {dbt_cli_kwargs}"
+        f"dbt {dbt_global_cli_kwargs} run-operation {dbt_cli_kwargs}"
         f" {macro_name} --args {macro_kwargs}"
     )
     logger.debug(f'Running command: {command}')
     result = ctx.run(command, hide=hide)
-    result_lines = result.stdout.splitlines()[1:]
+    result_lines = [json.loads(data) for data in result.stdout.splitlines()]
     return result_lines
 
 

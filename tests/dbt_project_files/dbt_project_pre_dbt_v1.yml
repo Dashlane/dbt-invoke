@@ -1,0 +1,16 @@
+name: test_dbt_project
+version: 1.0.0
+config-version: 2
+
+profile: dbt-sqlite
+
+clean-targets:
+  - target
+  - dbt_modules
+  - logs
+
+analysis-paths:
+  - analyses
+
+snapshots:
+  +target_schema: main
