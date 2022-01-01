@@ -191,9 +191,7 @@ def dbt_ls(
         # Else, if 'resource_type' is not in line_dict, this may be
         # a warning from dbt, so log it.
         else:
-            logger.warning(
-                f'Extra output from "dbt ls" command: {line}'
-            )
+            logger.warning(f'Extra output from "dbt ls" command: {line}')
     return result_lines_filtered
 
 

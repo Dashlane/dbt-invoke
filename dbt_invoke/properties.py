@@ -281,9 +281,9 @@ def _transform_ls_results(ctx, **kwargs):
                 output='path',
                 **kwargs,
             )
-            assert len(potential_result_paths) == len(potential_results), (
-                'Length of results differs from length of result details'
-            )
+            assert len(potential_result_paths) == len(
+                potential_results
+            ), 'Length of results differs from length of result details'
             potential_result_path = potential_result_paths[i]
         if Path(ctx.config['project_path'], potential_result_path).exists():
             results[potential_result_path] = potential_result
