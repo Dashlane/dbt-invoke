@@ -128,7 +128,7 @@ def dbt_ls(
     ctx,
     supported_resource_types=None,
     hide=True,
-    output='path',
+    output='json',
     logger=None,
     **kwargs,
 ):

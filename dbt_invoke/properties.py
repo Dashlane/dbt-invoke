@@ -265,6 +265,7 @@ def _transform_ls_results(ctx, **kwargs):
         output='json',
         **kwargs,
     )
+    potential_result_paths = None
     results = dict()
     for i, potential_result in enumerate(potential_results):
         if 'original_file_path' in potential_result:
@@ -274,16 +275,17 @@ def _transform_ls_results(ctx, **kwargs):
         # versions of dbt, we need to run "dbt ls" with the
         # "--output path" argument in order to retrieve paths
         else:
-            potential_result_paths = _utils.dbt_ls(
-                ctx,
-                supported_resource_types=_SUPPORTED_RESOURCE_TYPES,
-                logger=_LOGGER,
-                output='path',
-                **kwargs,
-            )
-            assert len(potential_result_paths) == len(
-                potential_results
-            ), 'Length of results differs from length of result details'
+            if potential_result_paths is None:
+                potential_result_paths = _utils.dbt_ls(
+                    ctx,
+                    supported_resource_types=_SUPPORTED_RESOURCE_TYPES,
+                    logger=_LOGGER,
+                    output='path',
+                    **kwargs,
+                )
+                assert len(potential_result_paths) == len(
+                    potential_results
+                ), 'Length of results differs from length of result details'
             potential_result_path = potential_result_paths[i]
         if Path(ctx.config['project_path'], potential_result_path).exists():
             results[potential_result_path] = potential_result
