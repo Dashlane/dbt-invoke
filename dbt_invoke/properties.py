@@ -2,11 +2,11 @@ import os
 import traceback
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
+import ast
 
 from invoke import task
 
 from dbt_invoke.internal import _utils
-import ast
 
 _LOGGER = _utils.get_logger('dbt-invoke')
 _MACRO_NAME = '_log_columns_list'
@@ -258,27 +258,37 @@ def _transform_ls_results(ctx, **kwargs):
     """
     # Run dbt ls to retrieve resource path and json information
     _LOGGER.info('Searching for matching resources...')
-    result_lines_path = _utils.dbt_ls(
-        ctx,
-        supported_resource_types=_SUPPORTED_RESOURCE_TYPES,
-        logger=_LOGGER,
-        **kwargs,
-    )
-    result_lines_dict = _utils.dbt_ls(
+    potential_results = _utils.dbt_ls(
         ctx,
         supported_resource_types=_SUPPORTED_RESOURCE_TYPES,
         logger=_LOGGER,
         output='json',
         **kwargs,
     )
-    results = dict(zip(result_lines_path, result_lines_dict))
-    # Filter dictionary for existing files and supported resource types
-    results = {
-        k: v
-        for k, v in results.items()
-        if v['resource_type'] in _SUPPORTED_RESOURCE_TYPES
-        and Path(ctx.config['project_path'], k).exists()
-    }
+    potential_result_paths = None
+    results = dict()
+    for i, potential_result in enumerate(potential_results):
+        if 'original_file_path' in potential_result:
+            potential_result_path = potential_result['original_file_path']
+        # Before dbt version 0.20.0, original_file_path was not
+        # included in the json response of "dbt ls". For older
+        # versions of dbt, we need to run "dbt ls" with the
+        # "--output path" argument in order to retrieve paths
+        else:
+            if potential_result_paths is None:
+                potential_result_paths = _utils.dbt_ls(
+                    ctx,
+                    supported_resource_types=_SUPPORTED_RESOURCE_TYPES,
+                    logger=_LOGGER,
+                    output='path',
+                    **kwargs,
+                )
+                assert len(potential_result_paths) == len(
+                    potential_results
+                ), 'Length of results differs from length of result details'
+            potential_result_path = potential_result_paths[i]
+        if Path(ctx.config['project_path'], potential_result_path).exists():
+            results[potential_result_path] = potential_result
     _LOGGER.info(
         f"Found {len(results)} matching resources in dbt project"
         f' "{ctx.config["project_name"]}"'

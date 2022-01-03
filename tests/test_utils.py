@@ -42,6 +42,7 @@ class TestUtils(TestDbtInvoke):
                     project_dir=self.project_dir,
                     profiles_dir=self.profiles_dir,
                     supported_resource_types=SUPPORTED_RESOURCE_TYPES,
+                    output='path',
                     logger=self.logger,
                     **dbt_ls_kwargs,
                 )

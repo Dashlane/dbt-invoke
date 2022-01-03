@@ -5,7 +5,6 @@ import sys
 import platform
 
 import yaml
-
 from dbt.task.base import get_nearest_project_dir
 
 MACROS = {
@@ -20,6 +19,9 @@ MACROS = {
         "\n    {% endif %}"
         "\n{% endmacro %}\n"
     )
+}
+DBT_GLOBAL_ARGS = {
+    'log-format': 'json',
 }
 DBT_LS_ARG_HELP = (
     'An argument for listing dbt resources (run "dbt ls --help" for details)'
@@ -126,7 +128,7 @@ def dbt_ls(
     ctx,
     supported_resource_types=None,
     hide=True,
-    output='path',
+    output='json',
     logger=None,
     **kwargs,
 ):
@@ -161,16 +163,36 @@ def dbt_ls(
                 default_arguments.append(f'{get_cli_kwargs(resource_type=rt)}')
     default_arguments = ' '.join(default_arguments)
     arguments = get_cli_kwargs(**kwargs)
-    all_arguments = f'{default_arguments} {arguments} --output {output}'
-    command = f"dbt ls {all_arguments}"
+    dbt_command_cli_args = f'{default_arguments} {arguments} --output {output}'
+    dbt_global_cli_args = get_cli_kwargs(**DBT_GLOBAL_ARGS)
+    command = f"dbt {dbt_global_cli_args} ls {dbt_command_cli_args}"
     logger.debug(f'Running command: {command}')
     result = ctx.run(command, hide=hide)
     result_lines = result.stdout.splitlines()
-    if output == 'json':
-        result_lines = [
-            json.loads(result_json) for result_json in result_lines
-        ]
-    return result_lines
+    result_lines_filtered = list()
+    for line in result_lines:
+        # Because we set the dbt global arg "--log-format json", if
+        # line is valid json then it may be an actual result or it
+        # may be some other output from dbt, like a warning.
+        try:
+            line_dict = json.loads(line)
+        # If line is not valid json, then it should be an actual
+        # result. This is because even when the "dbt ls" command
+        # arg "--output" is not set to json, non-result logs will
+        # still be in json format (due to the dbt global arg
+        # "--log-format json").
+        except ValueError:
+            result_lines_filtered.append(line)
+            continue
+        # If 'resource_type' is in line_dict, then this is likely
+        # an actual result and not something else like a warning.
+        if 'resource_type' in line_dict:
+            result_lines_filtered.append(line_dict)
+        # Else, if 'resource_type' is not in line_dict, this may be
+        # a warning from dbt, so log it.
+        else:
+            logger.warning(f'Extra output from "dbt ls" command: {line}')
+    return result_lines_filtered
 
 
 def get_cli_kwargs(**kwargs):
@@ -227,7 +249,7 @@ def dbt_run_operation(
     """
     if not logger:
         logger = get_logger('')
-    dbt_kwargs = {
+    dbt_command_args = {
         'project_dir': project_dir or ctx.config['project_path'],
         'profiles_dir': profiles_dir,
         'profile': profile,
@@ -235,11 +257,8 @@ def dbt_run_operation(
         'vars': vars,
         'bypass_cache': bypass_cache,
     }
-    dbt_cli_kwargs = get_cli_kwargs(**dbt_kwargs)
-
-    dbt_global_kwargs = {'log-format': 'json'}
-    dbt_global_cli_kwargs = get_cli_kwargs(**dbt_global_kwargs)
-
+    dbt_command_cli_args = get_cli_kwargs(**dbt_command_args)
+    dbt_global_cli_args = get_cli_kwargs(**DBT_GLOBAL_ARGS)
     macro_kwargs = json.dumps(kwargs, sort_keys=False)
     if platform.system().lower().startswith('win'):
         # Format YAML string for Windows Command Prompt
@@ -253,7 +272,7 @@ def dbt_run_operation(
         macro_kwargs = macro_kwargs.replace("'", """'"'"'""")
         macro_kwargs = f"'{macro_kwargs}'"
     command = (
-        f"dbt {dbt_global_cli_kwargs} run-operation {dbt_cli_kwargs}"
+        f"dbt {dbt_global_cli_args} run-operation {dbt_command_cli_args}"
         f" {macro_name} --args {macro_kwargs}"
     )
     logger.debug(f'Running command: {command}')

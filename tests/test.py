@@ -2,15 +2,14 @@ import os
 import unittest
 from pathlib import Path
 from unittest.mock import patch
+import sys
+import pkg_resources
+import shutil
 
 import invoke
-import sys
 
 from dbt_invoke import properties
 from dbt_invoke.internal import _utils
-
-import pkg_resources
-import shutil
 
 PARENT_DIR = Path(__file__).parent
 
