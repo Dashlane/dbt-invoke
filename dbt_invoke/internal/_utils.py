@@ -397,7 +397,7 @@ def add_macro(ctx, macro_name, logger=None):
 def escape_ansi(line):
     # Windows can sometime emit Control Sequences in command line outputs
     # (see https://docs.microsoft.com/en-us/windows/console/console-virtual-terminal-sequences)
-    # The regex should filter those out (see https://stackoverflow.com/a/14693789/15202709)
+    # The regex filters those out (see https://stackoverflow.com/a/14693789/15202709)
     ansi_escape = re.compile(r'(?:\x1B[@-_]|[\x80-\x9F])[0-?]*[ -/]*[@-~]')
     return ansi_escape.sub('', line)
 
