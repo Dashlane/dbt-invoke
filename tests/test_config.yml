@@ -103,6 +103,7 @@ expected_dbt_ls_results:
       - *orders
   exclude:
     customers:
+      - *revenue_by_daily_cohort
       - *orders
       - *items
       - *items_snapshot

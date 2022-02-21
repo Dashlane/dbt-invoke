@@ -159,6 +159,9 @@ def dbt_ls(
     default_arguments = list()
     if not any(resource_selection_arguments.values()):
         default_arguments.append(f'--select {ctx.config["project_name"]}')
+    # Use all supported_resource_types unless a resource_type or models
+    # kwarg is given
+    if not kwargs.get('resource_type') and not kwargs.get('models'):
         if supported_resource_types:
             for rt in supported_resource_types:
                 default_arguments.append(f'{get_cli_kwargs(resource_type=rt)}')
