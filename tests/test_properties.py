@@ -139,6 +139,13 @@ class TestProperties(TestDbtInvoke):
                 log_level='DEBUG',
             )
             # check the content
+        self.logger.info(f"Comparing content of files {target_path} and {expected_path}")
+        with open(target_path) as f:
+            content = '\n'.join(f.readlines())
+        self.logger.debug(f"Target content is \n{content}")
+        with open(expected_path) as f:
+            content = '\n'.join(f.readlines())
+        self.logger.debug(f"Expected content is \n{content}")
         self.assertTrue(filecmp.cmp(target_path, expected_path))
 
         # clean up
