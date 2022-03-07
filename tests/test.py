@@ -103,6 +103,26 @@ class TestDbtInvoke(unittest.TestCase):
         """
         invoke.run(cls.dbt_clean)
 
+    def compare_files(self, path1, path2):
+        # using filecmp will not work properly across different os
+        with open(path1) as f1:
+            for idx1, line1 in enumerate(f1):
+                with open(path2) as f2:
+                    for idx2, line2 in enumerate(f2):
+                        if idx2 != idx1:
+                            continue
+                        else:
+                            # matching line1 from both files
+                            if line1 == line2:
+                                break
+                            else:
+                                self.logger.info(
+                                    f"Found mismatching line: \n{line1}\n{line2}"
+                                )
+                                # else print that line from both files
+                                return False
+            return True
+
 
 if __name__ == '__main__':
     loader = unittest.TestLoader()
