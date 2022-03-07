@@ -179,7 +179,9 @@ dbt-invoke properties.delete <options>
 
 ### Limitations
 
-- When updating existing files, formatting and comments are not preserved.
+- `dbt-invoke` will try to preserve formatting and comments when updating existing 
+  files. If you want to preserve line-breaks, use `>` or `|` on your multiline strings,
+  as recommended [here](https://stackoverflow.com/a/21699210/15202709).
 - In order to collect or update the list of columns that should appear in 
   each property file, dbt's `get_columns_in_query` macro is run for each
   matching resource. As of the time of writing, `get_columns_in_query` uses a

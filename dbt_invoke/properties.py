@@ -39,10 +39,6 @@ _update_and_delete_help['log-level'] = (
             " thread will run dbt's get_columns_in_query macro against the"
             " data warehouse."
         ),
-        'preserve_yaml_formatting': (
-            "Preserves the formatting of existing yaml files."
-            " Includes Comments."
-        ),
     },
     auto_shortflags=False,
 )
@@ -60,7 +56,6 @@ def update(
     vars=None,
     bypass_cache=None,
     state=None,
-    preserve_yaml_formatting=False,
     log_level=None,
     threads=1,
 ):
@@ -92,8 +87,6 @@ def update(
         (run "dbt ls --help" for details)
     :param state: An argument for listing dbt resources
         (run "dbt ls --help" for details)
-    :param preserve_yaml_formatting: Preserves the formatting of existing yaml files.
-        Includes Comments.
     :param log_level: One of Python's standard logging levels
         (DEBUG, INFO, WARNING, ERROR, CRITICAL)
     :param threads: Maximum number of concurrent threads to use in
@@ -123,7 +116,6 @@ def update(
         ctx,
         transformed_ls_results,
         threads=threads,
-        preserve_yaml_formatting=preserve_yaml_formatting,
         **common_dbt_kwargs,
     )
 
@@ -314,7 +306,6 @@ def _create_all_property_files(
     ctx,
     transformed_ls_results,
     threads=1,
-    preserve_yaml_formatting=False,
     **kwargs,
 ):
     """
@@ -347,7 +338,6 @@ def _create_all_property_files(
                 v,
                 i + 1,
                 transformed_ls_results_length,
-                preserve_yaml_formatting,
                 **kwargs,
             ): {'index': i + 1, 'resource_location': k}
             for i, (k, v) in enumerate(transformed_ls_results.items())
@@ -462,7 +452,6 @@ def _create_property_file(
     resource_dict,
     counter,
     total,
-    preserve_yaml_formatting=False,
     **kwargs,
 ):
     """
@@ -494,12 +483,10 @@ def _create_property_file(
         property_path,
         resource_dict,
         columns,
-        preserve_yaml_formatting=preserve_yaml_formatting,
     )
     _utils.write_yaml(
         property_path,
         property_file_dict,
-        preserve_yaml_formatting=preserve_yaml_formatting,
     )
 
 
@@ -560,9 +547,7 @@ def _get_columns(ctx, resource_location, resource_dict, **kwargs):
     return columns
 
 
-def _structure_property_file_dict(
-    location, resource_dict, columns_list, preserve_yaml_formatting=False
-):
+def _structure_property_file_dict(location, resource_dict, columns_list):
     """
     Structure a dictionary that will be used to create a property file
 
@@ -577,9 +562,12 @@ def _structure_property_file_dict(
     resource_name = resource_dict['name']
     # If the property file already exists, read it into a dictionary.
     if location.exists():
-        property_file_dict = _utils.parse_yaml(
-            location, preserve_yaml_formatting=preserve_yaml_formatting
-        )
+        property_file_dict = _utils.parse_yaml(location)
+        # check if properties files has content
+        if not property_file_dict:
+            property_file_dict = _get_property_header(
+                resource_name, resource_type
+            )
     # Else create a new dictionary that
     # will be used to create a new property file.
     else:

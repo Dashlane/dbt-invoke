@@ -46,6 +46,7 @@ class TestDbtInvoke(unittest.TestCase):
 
         cls.project_dir = Path(PARENT_DIR, cls.config['project_name'])
         cls.profiles_dir = Path(PARENT_DIR, cls.config['project_name'])
+        cls.test_base_dir = PARENT_DIR
         cls.expected_properties = cls.config['expected_properties']
         cls.expected_dbt_ls_results = cls.config['expected_dbt_ls_results']
         cls.ctx = invoke.Context()

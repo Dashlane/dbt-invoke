@@ -5,6 +5,7 @@ import sys
 import platform
 import re
 from dbt.task.base import get_nearest_project_dir
+from ruamel.yaml import YAML, YAMLError, RoundTripLoader, RoundTripDumper
 
 MACROS = {
     '_log_columns_list': (
@@ -63,63 +64,36 @@ def get_logger(name, level='INFO'):
     return logger
 
 
-def parse_yaml(location, preserve_yaml_formatting=False):
+def parse_yaml(location):
     """
     Parse a yaml file
 
     :param location: The location of the yaml file to parse
-    :param preserve_yaml_formatting: Preserves the formatting of existing yaml files.
-        Includes Comments.
     :return: The contents of the yaml file
     """
-    if preserve_yaml_formatting:
-        from ruamel.yaml import YAML, YAMLError
-
-        yaml = YAML(typ="rt")
-        with open(location, 'r') as stream:
-            try:
-                parsed_yaml = yaml.load(stream)
-                return parsed_yaml
-            except YAMLError as exc:
-                sys.exit(exc)
-    else:
-        import yaml
-
-        with open(location, 'r') as stream:
-            try:
-                parsed_yaml = yaml.safe_load(stream)
-                return parsed_yaml
-            except yaml.YAMLError as exc:
-                sys.exit(exc)
+    yaml = YAML(typ="rt")
+    with open(location, 'r') as stream:
+        try:
+            parsed_yaml = yaml.load(stream)
+            return parsed_yaml
+        except YAMLError as exc:
+            sys.exit(exc)
 
 
-def write_yaml(location, data, preserve_yaml_formatting=False):
+def write_yaml(location, data):
     """
     Write a yaml file
 
     :param location: The location to which to write the yaml file
     :param data: The object which will be written to the yaml file
-    :param preserve_yaml_formatting: Preserves the formatting of existing yaml files.
-        Includes Comments.
     :return: None
     """
-    if preserve_yaml_formatting:
-        from ruamel.yaml import YAML, YAMLError
-
-        yaml = YAML(typ="rt")
-        try:
-            with open(location, 'w') as stream:
-                yaml.dump(data, stream)
-        except YAMLError as exc:
-            sys.exit(exc)
-    else:
-        import yaml
-
-        try:
-            with open(location, 'w') as stream:
-                yaml.dump(data, stream, sort_keys=False)
-        except yaml.YAMLError as exc:
-            sys.exit(exc)
+    yaml = YAML(typ="rt")
+    try:
+        with open(location, 'w') as stream:
+            yaml.dump(data, stream)
+    except YAMLError as exc:
+        sys.exit(exc)
 
 
 def get_project_info(ctx, project_dir=None):

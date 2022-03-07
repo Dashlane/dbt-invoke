@@ -1,0 +1,13 @@
+version: 2
+models:
+- name: customers
+  description: >
+    This is a very long string that goes on forever and ever and ever and ever and
+    ever and ever and ever and ever and we might want it shortened.
+
+    Another line.
+  columns:
+  - name: customer_id
+    description: ''
+  - name: created_at
+    description: ''

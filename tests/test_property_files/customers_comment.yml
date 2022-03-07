@@ -1,0 +1,12 @@
+version: 2
+models:
+- name: customers
+  # a comment
+  description: a model
+  columns:
+  - name: customer_id
+    # another comment
+    description: ''
+  - name: created_at
+        # an indented comment
+    description: ''
