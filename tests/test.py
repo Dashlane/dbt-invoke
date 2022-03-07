@@ -116,7 +116,9 @@ class TestDbtInvoke(unittest.TestCase):
                             if line1 == line2:
                                 break
                             else:
-                                self.logger.info(f"Found mismatching line: \n{line1}\n{line2}")
+                                self.logger.info(
+                                    f"Found mismatching line: \n{line1}\n{line2}"
+                                )
                                 # else print that line from both files
                                 return False
             return True
