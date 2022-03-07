@@ -149,7 +149,7 @@ class TestProperties(TestDbtInvoke):
             content = '\n'.join(f.readlines())
         self.logger.debug(f"Expected content is \n{content}")
         filecmp.clear_cache()
-        self.assertTrue(filecmp.cmp(target_path, expected_path, shallow=False))
+        self.assertTrue(self.compare_files(target_path, expected_path))
 
         # clean up
         os.remove(target_path)
