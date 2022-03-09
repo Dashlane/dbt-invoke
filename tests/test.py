@@ -5,6 +5,7 @@ from unittest.mock import patch
 import sys
 import pkg_resources
 import shutil
+import itertools
 
 import invoke
 
@@ -104,24 +105,18 @@ class TestDbtInvoke(unittest.TestCase):
         invoke.run(cls.dbt_clean)
 
     def compare_files(self, path1, path2):
-        # using filecmp will not work properly across different os
-        with open(path1) as f1:
-            for idx1, line1 in enumerate(f1):
-                with open(path2) as f2:
-                    for idx2, line2 in enumerate(f2):
-                        if idx2 != idx1:
-                            continue
-                        else:
-                            # matching line1 from both files
-                            if line1 == line2:
-                                break
-                            else:
-                                self.logger.info(
-                                    f"Found mismatching line: \n{line1}\n{line2}"
-                                )
-                                # else print that line from both files
-                                return False
-            return True
+        path1_text = path1.read_text()
+        path2_text = path2.read_text()
+        path1_lines = path1_text.splitlines()
+        path2_lines = path2_text.splitlines()
+        zipped_lines = itertools.zip_longest(path1_lines, path2_lines)
+        for i, (path1_line, path2_line) in enumerate(zipped_lines):
+            if path1_line != path2_line:
+                self.logger.info(
+                    f"Found mismatch in line {i + 1}:\nFile 1: {path1_line}\nFile 2: {path2_line}"
+                )
+                return False
+        return True
 
 
 if __name__ == '__main__':

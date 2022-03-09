@@ -1,7 +1,6 @@
 import unittest
 from pathlib import Path
 from unittest.mock import patch
-import filecmp
 import shutil
 import os
 
@@ -114,6 +113,16 @@ class TestProperties(TestDbtInvoke):
             "customers_comment.yml", target_model="customers"
         )
 
+    def test_keep_list_format(self):
+        self.edit_update_compare(
+            "customers_keep_list_format.yml", target_model="customers"
+        )
+
+    def test_keep_empty_line(self):
+        self.edit_update_compare(
+            "customers_keep_empty_line.yml", target_model="customers"
+        )
+
     def edit_update_compare(
         self, source_file, target_model="customers", expected_file=None
     ):
@@ -142,13 +151,7 @@ class TestProperties(TestDbtInvoke):
         self.logger.info(
             f"Comparing content of files {target_path} and {expected_path}"
         )
-        with open(target_path) as f:
-            content = '\n'.join(f.readlines())
-        self.logger.debug(f"Target content is \n{content}")
-        with open(expected_path) as f:
-            content = '\n'.join(f.readlines())
-        self.logger.debug(f"Expected content is \n{content}")
-        filecmp.clear_cache()
+
         self.assertTrue(self.compare_files(target_path, expected_path))
 
         # clean up

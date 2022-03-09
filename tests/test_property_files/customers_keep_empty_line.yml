@@ -1,14 +1,10 @@
 version: 2
 models:
 - name: customers
-  description: >
-    A test description with
-
-    - some
-    - formatting
-
+  description: A description
   columns:
   - name: customer_id
     description: ''
+
   - name: created_at
     description: ''
