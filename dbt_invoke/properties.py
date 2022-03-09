@@ -113,7 +113,10 @@ def update(
         log_level=log_level,
     )
     _create_all_property_files(
-        ctx, transformed_ls_results, threads=threads, **common_dbt_kwargs
+        ctx,
+        transformed_ls_results,
+        threads=threads,
+        **common_dbt_kwargs,
     )
 
 
@@ -300,7 +303,10 @@ def _transform_ls_results(ctx, **kwargs):
 
 
 def _create_all_property_files(
-    ctx, transformed_ls_results, threads=1, **kwargs
+    ctx,
+    transformed_ls_results,
+    threads=1,
+    **kwargs,
 ):
     """
     For each resource from dbt ls, create or update a property file
@@ -379,7 +385,7 @@ def _create_all_property_files(
     # Log result summary
     _LOGGER.info(
         f'{"[DONE]":>{_PROGRESS_PADDING}}'
-        f' Total: {successes+failures},'
+        f' Total: {successes + failures},'
         f' Successes: {successes},'
         f' Failures: {failures}'
     )
@@ -441,7 +447,12 @@ def _delete_all_property_files(ctx, transformed_ls_results):
 
 
 def _create_property_file(
-    ctx, resource_location, resource_dict, counter, total, **kwargs
+    ctx,
+    resource_location,
+    resource_dict,
+    counter,
+    total,
+    **kwargs,
 ):
     """
     Create a property file
@@ -469,9 +480,14 @@ def _create_property_file(
         ctx.config['project_path'], resource_location
     ).with_suffix('.yml')
     property_file_dict = _structure_property_file_dict(
-        property_path, resource_dict, columns
+        property_path,
+        resource_dict,
+        columns,
     )
-    _utils.write_yaml(property_path, property_file_dict)
+    _utils.write_yaml(
+        property_path,
+        property_file_dict,
+    )
 
 
 def _get_columns(ctx, resource_location, resource_dict, **kwargs):
@@ -547,6 +563,11 @@ def _structure_property_file_dict(location, resource_dict, columns_list):
     # If the property file already exists, read it into a dictionary.
     if location.exists():
         property_file_dict = _utils.parse_yaml(location)
+        # check if properties files has content
+        if not property_file_dict:
+            property_file_dict = _get_property_header(
+                resource_name, resource_type
+            )
     # Else create a new dictionary that
     # will be used to create a new property file.
     else:

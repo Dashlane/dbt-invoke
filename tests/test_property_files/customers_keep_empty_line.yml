@@ -1,0 +1,10 @@
+version: 2
+models:
+- name: customers
+  description: A description
+  columns:
+  - name: customer_id
+    description: ''
+
+  - name: created_at
+    description: ''

@@ -4,9 +4,8 @@ from pathlib import Path
 import sys
 import platform
 import re
-
-import yaml
 from dbt.task.base import get_nearest_project_dir
+from ruamel.yaml import YAML, YAMLError
 
 MACROS = {
     '_log_columns_list': (
@@ -72,11 +71,12 @@ def parse_yaml(location):
     :param location: The location of the yaml file to parse
     :return: The contents of the yaml file
     """
+    yaml = YAML(typ="rt")
     with open(location, 'r') as stream:
         try:
-            parsed_yaml = yaml.safe_load(stream)
+            parsed_yaml = yaml.load(stream)
             return parsed_yaml
-        except yaml.YAMLError as exc:
+        except YAMLError as exc:
             sys.exit(exc)
 
 
@@ -88,10 +88,11 @@ def write_yaml(location, data):
     :param data: The object which will be written to the yaml file
     :return: None
     """
+    yaml = YAML(typ="rt")
     try:
         with open(location, 'w') as stream:
-            yaml.safe_dump(data, stream, sort_keys=False)
-    except yaml.YAMLError as exc:
+            yaml.dump(data, stream)
+    except YAMLError as exc:
         sys.exit(exc)
 
 

@@ -4,9 +4,11 @@ config-version: 2
 
 profile: dbt-sqlite
 
+seed-paths: ["data"]
+
 clean-targets:
   - target
-  - dbt_modules
+  - dbt_packages
   - logs
 
 analysis-paths:
