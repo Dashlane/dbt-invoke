@@ -5,7 +5,7 @@ import sys
 import platform
 import re
 from dbt.task.base import get_nearest_project_dir
-from ruamel.yaml import YAML, YAMLError, RoundTripLoader, RoundTripDumper
+from ruamel.yaml import YAML, YAMLError
 
 MACROS = {
     '_log_columns_list': (
