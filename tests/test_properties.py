@@ -138,7 +138,7 @@ class TestProperties(TestDbtInvoke):
                 profiles_dir=self.profiles_dir,
                 log_level='DEBUG',
             )
-            # check the content
+        # check the content
         self.logger.info(
             f"Comparing content of files {target_path} and {expected_path}"
         )
