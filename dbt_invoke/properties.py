@@ -542,7 +542,6 @@ def _create_property_file(
             current_property_yaml.pop(_SUPPORTED_RESOURCE_TYPES[resource_type])
         # Check if the yaml file no longer contains resources
         if not set(_SUPPORTED_RESOURCE_TYPES.values()).intersection(current_property_yaml.keys()):
-            print(f"Clean this file up {current_property_path}")
             Path(current_property_path).unlink()
         else:
             _utils.write_yaml(
