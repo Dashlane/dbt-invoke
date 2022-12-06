@@ -3,6 +3,8 @@ import traceback
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 import ast
+import json
+import functools
 
 from invoke import task
 
@@ -445,6 +447,32 @@ def _delete_all_property_files(ctx, transformed_ls_results):
     else:
         _LOGGER.info('There are no files to delete.')
 
+@functools.lru_cache
+def _read_manifest(
+    target_path
+):
+    with open(Path(target_path,'manifest').with_suffix('.json'), "r",encoding='utf-8') as manifest_json:
+        return json.loads(manifest_json.read())
+
+def _get_current_location(
+    ctx,
+    resource_dict
+):
+    """
+    Find if the resource is already documented somewhere
+
+    :param ctx: An Invoke context object
+    :param resource_dict: A dictionary representing the json output for
+        this resource from the "dbt ls" command
+    :return: Str or None
+    """
+    node_unique_id = resource_dict['unique_id']
+    patch_path = _read_manifest(ctx.config['target_path'])['nodes'][node_unique_id]['patch_path']
+    if patch_path:
+        return Path(
+            ctx.config['project_path'],
+            patch_path.split('//')[1]
+        )
 
 def _create_property_file(
     ctx,
@@ -455,7 +483,10 @@ def _create_property_file(
     **kwargs,
 ):
     """
-    Create a property file
+    Create a property file.
+    A property file will be created using the existing data from another file if it is present.
+    It will then be updated with any column changes etc.
+    Any existing definitions in other property files will be cleaned up.
 
     :param ctx: An Invoke context object
     :param resource_location: The location of the file representing the
@@ -475,10 +506,52 @@ def _create_property_file(
         f' Resource {counter} of {total},'
         f' {resource_location}'
     )
-    columns = _get_columns(ctx, resource_location, resource_dict, **kwargs)
+    current_property_path = _get_current_location(ctx, resource_dict)
     property_path = Path(
         ctx.config['project_path'], resource_location
     ).with_suffix('.yml')
+    if current_property_path and Path(current_property_path) != property_path:
+        # Migrate the existing contents into the correct location
+        resource_type = resource_dict['resource_type']
+        resource_name = resource_dict['name']
+        _LOGGER.info(f"An existing definition was located for {resource_name} of type {resource_type}.")
+        _LOGGER.info(f"Found from Manifest path {current_property_path} but expected {property_path}. Migrating")
+        current_property_yaml = _utils.parse_yaml(current_property_path)
+        property_file_dict = _get_property_header(
+                resource_name, resource_type
+            )
+        # Gather the definition from within the existing yaml file (which could have many resources defined in it)
+        current_definition_index = next((index for (index, x) in enumerate(current_property_yaml[_SUPPORTED_RESOURCE_TYPES[resource_type]]) if x['name'] == resource_name), None)
+        # If we look in the file and we don't find the definition then we have a sync issue. Throw an exception.
+        if current_definition_index is None:
+            raise Exception('Manifest is out of sync with repository. Please re-run one of the documented pre requisite dbt functions ie dbt-run')
+        # Extract the current definition so we can move it
+        definition = current_property_yaml[_SUPPORTED_RESOURCE_TYPES[resource_type]][current_definition_index]
+        # Move the existing defintion into the new file
+        property_file_dict[_SUPPORTED_RESOURCE_TYPES[resource_type]][0] = definition
+        # Write out the new file with the existing information
+        _utils.write_yaml(
+                property_path,
+                property_file_dict
+                )
+        # Remove the existing definition from where it was found
+        current_property_yaml[_SUPPORTED_RESOURCE_TYPES[resource_type]].pop(current_definition_index)
+        # Check if this was the last of that resource type in the file
+        if len(current_property_yaml[_SUPPORTED_RESOURCE_TYPES[resource_type]]) == 0:
+            # Remove the property type from the yaml if its now empty
+            current_property_yaml.pop(_SUPPORTED_RESOURCE_TYPES[resource_type])
+        # Check if the yaml file no longer contains resources
+        if not set(_SUPPORTED_RESOURCE_TYPES.values()).intersection(current_property_yaml.keys()):
+            print(f"Clean this file up {current_property_path}")
+            Path(current_property_path).unlink()
+        else:
+            _utils.write_yaml(
+                    current_property_path,
+                    current_property_yaml
+                    )
+
+    columns = _get_columns(ctx, resource_location, resource_dict, **kwargs)
+
     property_file_dict = _structure_property_file_dict(
         property_path,
         resource_dict,
