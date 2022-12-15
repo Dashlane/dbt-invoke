@@ -646,10 +646,14 @@ def _structure_property_file_dict(location, resource_dict, columns_list):
         property_file_dict = _get_property_header(resource_name, resource_type)
     # Get the sub-dictionaries of each existing column
     resource_type_plural = _SUPPORTED_RESOURCE_TYPES[resource_type]
-    existing_columns_dict = {
-        item['name']: item
-        for item in property_file_dict[resource_type_plural][0]['columns']
-    }
+    print('testing if cols key exists')
+    if 'columns' in property_file_dict[resource_type_plural][0].keys():
+        existing_columns_dict = {
+            item['name']: item
+            for item in property_file_dict[resource_type_plural][0]['columns']
+        }
+    else:
+        existing_columns_dict = {}
     # For each column we want in the property file,
     # reuse the sub-dictionary if it exists
     # or else create a new sub-dictionary
