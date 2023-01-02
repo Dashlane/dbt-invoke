@@ -3,6 +3,7 @@ import traceback
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 import ast
+from collections import defaultdict
 
 from invoke import task
 
@@ -204,6 +205,167 @@ def echo_macro(ctx):
         f'Copy and paste the following macro into your dbt project:'
         f'\n{_utils.get_macro(_MACRO_NAME)}'
     )
+
+
+@task(
+    help={
+        'location': (
+            'The location of the property file from which to migrate.'
+        ),
+        **_update_and_delete_help,
+    },
+    auto_shortflags=False,
+)
+def migrate(
+    ctx,
+    location,
+    resource_type=None,
+    select=None,
+    models=None,
+    exclude=None,
+    selector=None,
+    project_dir=None,
+    profiles_dir=None,
+    profile=None,
+    target=None,
+    vars=None,
+    bypass_cache=None,
+    state=None,
+    log_level=None,
+):
+    """
+    Change structure from one property file for multiple resources to
+    one property file per resource
+
+    :param ctx: An Invoke context object
+    :param location: The location of the property file from which to
+        migrate
+    :param resource_type: An argument for listing dbt resources
+        (run "dbt ls --help" for details)
+    :param select: An argument for listing dbt resources
+        (run "dbt ls --help" for details)
+    :param models: An argument for listing dbt resources
+        (run "dbt ls --help" for details)
+    :param exclude: An argument for listing dbt resources
+        (run "dbt ls --help" for details)
+    :param selector: An argument for listing dbt resources
+        (run "dbt ls --help" for details)
+    :param project_dir: An argument for listing dbt resources
+        (run "dbt ls --help" for details)
+    :param profiles_dir: An argument for listing dbt resources
+        (run "dbt ls --help" for details)
+    :param profile: An argument for listing dbt resources
+        (run "dbt ls --help" for details)
+    :param target: An argument for listing dbt resources
+        (run "dbt ls --help" for details)
+    :param vars: An argument for listing dbt resources
+        (run "dbt ls --help" for details)
+    :param bypass_cache: An argument for listing dbt resources
+        (run "dbt ls --help" for details)
+    :param state: An argument for listing dbt resources
+        (run "dbt ls --help" for details)
+    :param log_level: One of Python's standard logging levels
+        (DEBUG, INFO, WARNING, ERROR, CRITICAL)
+    :return: None
+    """
+    migration_map = None
+    migration_property_file_dict = None
+    # Check that the specified location exists
+    location = Path(location)
+    if location.exists():
+        # Read in the existing property file
+        migration_property_file_dict = _utils.parse_yaml(location)
+        # Create a map to assist in creating new property files and
+        # updating the existing property file.
+        inverse_supported_resource_types = {
+            v: k for k, v in _SUPPORTED_RESOURCE_TYPES.items()
+        }
+        migration_map = {
+            properties['name']: {
+                'resource_type_plural': resource_type_plural,
+                'resource_type': inverse_supported_resource_types[
+                    resource_type_plural
+                ],
+                'index': i,
+                'properties': properties,
+            }
+            for resource_type_plural in _SUPPORTED_RESOURCE_TYPES.values()
+            for i, properties in enumerate(
+                migration_property_file_dict[resource_type_plural]
+            )
+            if resource_type_plural in migration_property_file_dict
+        }
+    else:
+        _LOGGER.error(f"Location {str(location.resolve())} does not exist.")
+    # Check if there are any properties to migrate
+    if migration_map and migration_property_file_dict:
+        # If the select argument has been passed, use it to filter
+        if select:
+            select = ' '.join(
+                resource_name
+                for resource_name in migration_map
+                if resource_name in select.split(',')
+            )
+        else:
+            select = ' '.join(migration_map)
+        # Run _initiate_alterations to retrieve the locations of the
+        # resources for which properties will be migrated.
+        _, transformed_ls_results = _initiate_alterations(
+            ctx,
+            resource_type=resource_type,
+            select=select,
+            models=models,
+            exclude=exclude,
+            selector=selector,
+            project_dir=project_dir,
+            profiles_dir=profiles_dir,
+            profile=profile,
+            target=target,
+            vars=vars,
+            bypass_cache=bypass_cache,
+            state=state,
+            log_level=log_level,
+        )
+        # Add to-be-created property file paths to migration_map
+        for resource_location, resource_dict in transformed_ls_results.items():
+            migration_map[resource_dict['name']]['path'] = Path(
+                ctx.config['project_path'],
+                resource_location,
+            ).with_suffix('.yml')
+
+        # Try to create each new property file. For each success, save
+        # the index of the resource to remove from the migration
+        # property file.
+        indices_to_remove = defaultdict(list)
+        for resource_name, data in migration_map.items():
+            try:
+                property_file_dict = _get_property_header(
+                    resource_name,
+                    data['resource_type'],
+                    data['properties'],
+                )
+                _utils.write_yaml(data['path'], property_file_dict, mode='x')
+                indices_to_remove[data['resource_type_plural']].append(
+                    data['index']
+                )
+                _LOGGER.info(f'Created {data["path"]}')
+            except Exception as e:
+                _LOGGER.error(f'Failed to create {data["path"]}: {e}')
+        # Remove migrated resources from migration_property_file_dict
+        removed_counter = 0
+        for resource_type_plural, indices in indices_to_remove.items():
+            for i in sorted(indices, reverse=True):
+                migration_property_file_dict[resource_type_plural].pop(i)
+                removed_counter += 1
+        # Overwrite the migration property file with its remaining
+        # post-migration contents.
+        _utils.write_yaml(location, migration_property_file_dict)
+        _LOGGER.info(
+            f'Removed {removed_counter} migrated resources from'
+            f' {str(location.resolve())}'
+        )
+    else:
+        _LOGGER.info(f'Nothing to migrate from {str(location.resolve())}')
 
 
 def _initiate_alterations(ctx, **kwargs):
@@ -592,20 +754,22 @@ def _structure_property_file_dict(location, resource_dict, columns_list):
     return property_file_dict
 
 
-def _get_property_header(resource, resource_type):
+def _get_property_header(resource, resource_type, properties=None):
     """
     Create a dictionary representing resources properties
 
     :param resource: The name of the resource for which to create a
         property header
     :param resource_type: The type of the resource (model, seed, etc.)
+    :param properties: Dictionary containing existing properties to
+        which to add a header (name, description, columns, etc.)
     :return: A dictionary representing resource properties
     """
+    if not properties:
+        properties = {'name': resource, 'description': "", 'columns': []}
     header_dict = {
         'version': 2,
-        _SUPPORTED_RESOURCE_TYPES[resource_type]: [
-            {'name': resource, 'description': "", 'columns': []}
-        ],
+        _SUPPORTED_RESOURCE_TYPES[resource_type]: [properties],
     }
     return header_dict
 

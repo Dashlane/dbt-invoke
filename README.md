@@ -46,6 +46,10 @@ pip install dbt-invoke
   - For example, given a resource file in the location 
     `models/marts/core/users.sql`, this tool will create, update, or delete a 
     property file in the location `models/marts/core/users.yml`.
+  - If your dbt project already use a single `.yml` file to define properties
+    for multiple resources, see the
+    [Migrating to One Property File Per Resource](#migrating-to-one-property-file-per-resource)
+    section.
 
     
 - Any newly generated property files are created with the correct resource 
@@ -165,6 +169,24 @@ dbt-invoke properties.delete <options>
   except for `--threads`.
 
 
+### Migrating to One Property File Per Resource
+- Two conventions for dbt property files are:
+  1. One property file per resource
+  2. One property file for multiple resources
+
+
+- dbt-invoke abides by the "one property file per resource" convention.
+- If your dbt project uses the "one property file for multiple resources
+  convention", you can migrate to one property file per resource, by using
+  dbt-invoke's `properties.migrate` command as shown here:
+  ```shell
+  dbt-invoke properties.migrate path/to/multiple_resource_property_file.yml <options>
+  ```
+  - Successfully migrated properties will be removed from the existing
+    multiple-resource property file.
+  - `<options>` uses the same arguments as for creating/updating property files,
+    except for `--threads`.
+
 ### Help
 
 - To view the list of available commands and their short descriptions, run:
@@ -192,7 +214,7 @@ dbt-invoke properties.delete <options>
   - This may be partially remedied by increasing the value of the `--threads` 
     option in `dbt-invoke properties.update`.
 - dbt-invoke is tested against:
-  - Python 3.7 and 3.9
-  - dbt 0.18, 0.19, and 1.0
+  - Python 3.7 and 3.10
+  - dbt 0.18, 0.19, and 1.1
   - macos-latest, windows-latest, ubuntu-latest
 - dbt-invoke has not been tested across different types of data warehouses.

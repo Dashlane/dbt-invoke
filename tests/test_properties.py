@@ -77,6 +77,62 @@ class TestProperties(TestDbtInvoke):
         for full_file_path in all_files_actual_properties:
             self.assertFalse(full_file_path.exists())
 
+    def test_migrate(self):
+        """
+        Test the migration of structure from one property file for
+        multiple resources to one property file per resource
+
+        :return: None
+        """
+        # Copy migration property file to the test project
+        source_path = Path(
+            self.test_base_dir,
+            'test_property_files',
+            'combined_migration.yml',
+        )
+        target_path = Path(
+            self.project_dir,
+            'models',
+            'combined_migration.yml',
+        )
+        shutil.copy(source_path, target_path)
+        # Run migration
+        properties.migrate(
+            self.ctx,
+            str(target_path.resolve()),
+            project_dir=self.project_dir,
+            profiles_dir=self.profiles_dir,
+            log_level='DEBUG',
+        )
+        # Check that the new property files contain the expected contents
+        for file_location, exp_props in self.expected_properties.items():
+            full_file_path = Path(self.project_dir, file_location)
+            actual_props = _utils.parse_yaml(full_file_path)
+            self.assertEqual(exp_props, actual_props)
+        # Delete the new property files
+        with patch('builtins.input', return_value='y'):
+            properties.delete(
+                self.ctx,
+                project_dir=self.project_dir,
+                profiles_dir=self.profiles_dir,
+                log_level='DEBUG',
+            )
+        # Check that the migration property file has been updated with
+        # the expected contents
+        expected_path = Path(
+            self.test_base_dir,
+            'test_property_files',
+            'combined_migration_expected.yml',
+        )
+        actual_post_migration_props = _utils.parse_yaml(target_path)
+        exp_post_migration_props = _utils.parse_yaml(expected_path)
+        self.assertEqual(
+            actual_post_migration_props,
+            exp_post_migration_props,
+        )
+        # Delete the migration property file from the test project
+        os.remove(target_path)
+
     def test_multiline(self):
         self.edit_update_compare(
             "customers_multiline.yml", target_model="customers"
