@@ -80,17 +80,18 @@ def parse_yaml(location):
             sys.exit(exc)
 
 
-def write_yaml(location, data):
+def write_yaml(location, data, mode='w'):
     """
     Write a yaml file
 
     :param location: The location to which to write the yaml file
     :param data: The object which will be written to the yaml file
+    :param mode: The mode in which to open the yaml file
     :return: None
     """
     yaml = YAML(typ="rt")
     try:
-        with open(location, 'w') as stream:
+        with open(location, mode) as stream:
             yaml.dump(data, stream)
     except YAMLError as exc:
         sys.exit(exc)
