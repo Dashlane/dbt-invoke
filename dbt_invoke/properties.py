@@ -3,6 +3,7 @@ import traceback
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 import ast
+from collections import defaultdict
 
 from invoke import task
 
@@ -189,6 +190,203 @@ def delete(
         log_level=log_level,
     )
     _delete_all_property_files(ctx, transformed_ls_results)
+
+
+@task(
+    auto_shortflags=False,
+)
+def fill(    ctx,
+    resource_type=None,
+    select=None,
+    models=None,
+    exclude=None,
+    selector=None,
+    project_dir=None,
+    profiles_dir=None,
+    profile=None,
+    target=None,
+    vars=None,
+    bypass_cache=None,
+    state=None,
+    source_resource_type=None,
+    source_select=None,
+    source_models=None,
+    source_exclude=None,
+    source_selector=None,
+    source_project_dir=None,
+    source_profiles_dir=None,
+    source_profile=None,
+    source_target=None,
+    source_vars=None,
+    source_bypass_cache=None,
+    source_state=None,
+    log_level=None,
+):
+    """
+    Interactively fill column descriptions using existing definitions
+    from elsewhere in the dbt project
+
+    :param ctx: An Invoke context object
+    :param resource_type: An argument for listing dbt resources
+        (run "dbt ls --help" for details)
+    :param select: An argument for listing dbt resources
+        (run "dbt ls --help" for details)
+    :param models: An argument for listing dbt resources
+        (run "dbt ls --help" for details)
+    :param exclude: An argument for listing dbt resources
+        (run "dbt ls --help" for details)
+    :param selector: An argument for listing dbt resources
+        (run "dbt ls --help" for details)
+    :param project_dir: An argument for listing dbt resources
+        (run "dbt ls --help" for details)
+    :param profiles_dir: An argument for listing dbt resources
+        (run "dbt ls --help" for details)
+    :param profile: An argument for listing dbt resources
+        (run "dbt ls --help" for details)
+    :param target: An argument for listing dbt resources
+        (run "dbt ls --help" for details)
+    :param vars: An argument for listing dbt resources
+        (run "dbt ls --help" for details)
+    :param bypass_cache: An argument for listing dbt resources
+        (run "dbt ls --help" for details)
+    :param state: An argument for listing dbt resources
+        (run "dbt ls --help" for details)
+    :param log_level: One of Python's standard logging levels
+        (DEBUG, INFO, WARNING, ERROR, CRITICAL)
+    :return: None
+    """
+    _, transformed_ls_results = _initiate_alterations(
+        ctx,
+        resource_type=source_resource_type,
+        select=source_select,
+        models=source_models,
+        exclude=source_exclude,
+        selector=source_selector,
+        project_dir=source_project_dir or project_dir,
+        profiles_dir=source_profiles_dir or profiles_dir,
+        profile=source_profile or profile,
+        target=source_target,
+        vars=source_vars,
+        bypass_cache=source_bypass_cache,
+        state=source_state,
+        log_level=log_level,
+    )
+    described_columns = defaultdict(lambda: defaultdict(list))
+    for resource_location, resource_dict in transformed_ls_results.items():
+        resource_path = Path(ctx.config['project_path'], resource_location)
+        if resource_path.with_suffix('.yml').exists():
+            property_path = resource_path.with_suffix('.yml')
+            property_file_dict = _utils.parse_yaml(property_path)
+            resource_type_plural = _SUPPORTED_RESOURCE_TYPES[resource_dict['resource_type']]
+            columns = property_file_dict[resource_type_plural][0]['columns']
+            for column in columns:
+                if column.get('description'):
+                    described_columns[column['name']][column['description']].append(resource_dict['name'])
+    _, transformed_ls_results = _initiate_alterations(
+        ctx,
+        resource_type=resource_type,
+        select=select,
+        models=models,
+        exclude=exclude,
+        selector=selector,
+        project_dir=project_dir,
+        profiles_dir=profiles_dir,
+        profile=profile,
+        target=target,
+        vars=vars,
+        bypass_cache=bypass_cache,
+        state=state,
+        log_level=log_level,
+    )
+    non_described_columns = list()
+    newly_described_columns = list()
+    for resource_location, resource_dict in transformed_ls_results.items():
+        resource_path = Path(ctx.config['project_path'], resource_location)
+        if resource_path.with_suffix('.yml').exists():
+            property_path = resource_path.with_suffix('.yml')
+            property_file_dict = _utils.parse_yaml(property_path)
+            resource_type_plural = _SUPPORTED_RESOURCE_TYPES[resource_dict['resource_type']]
+            for column in property_file_dict[resource_type_plural][0]['columns']:
+                skip_column = False
+                if described_columns.get(column['name']) and not column.get('description'):
+                    column_descriptions = described_columns[column['name']]
+                    column_descriptions_length = len(column_descriptions)
+                    if len(column_descriptions) > 1:
+                        conflict = (
+                            f"""\n\nConflicting definitions for""" 
+                            f""" "{column['name']}"\n\n"""
+                        )
+                        options_dict = {
+                            i: (column_description, resource_names)
+                            for i, (column_description, resource_names) in enumerate(column_descriptions.items())
+                        }
+                        options = '\n\n'.join(
+                            [
+                                f'[{i}] (from'
+                                f' {options_dict[i][1][0]} and'
+                                f' {len(options_dict[i][1]) - 1} more):'
+                                f'\n\t{options_dict[i][0]}'
+                                if len(options_dict[i][1]) > 1
+                                else f'[{i}] (from'
+                                f' {options_dict[i][1][0]}):'
+                                f'\n\t{options_dict[i][0]}'
+                                for i in options_dict
+                            ]
+                        )
+                        prompt = (
+                            f'\n\nPlease choose a description for'
+                            f' {resource_dict["name"]}.{column["name"]} from'
+                            f' options 0 through'
+                            f' {column_descriptions_length - 1}'
+                            f' (or s to skip this column):\n'
+                        )
+                        choice_index = input(f'{conflict}{options}{prompt}')
+                        reprompt = (
+                            f'Please choose a number from 0 through'
+                            f' {column_descriptions_length - 1}'
+                            f' (or s to skip this column):\n'
+                        )
+                        while True:
+                            if choice_index.isdigit():
+                                choice_index = int(choice_index)
+                                if 0 <= choice_index < column_descriptions_length:
+                                    break
+                                else:
+                                    choice_index = input(reprompt)
+                            elif choice_index == 's':
+                                skip_column = True
+                                break
+                            else:
+                                choice_index = input(reprompt)
+                        if skip_column:
+                            non_described_columns.append(
+                                f'{resource_dict["name"]}.{column["name"]}'
+                            )
+                            continue
+                        column['description'] = options_dict[choice_index][0]
+                        newly_described_columns.append(
+                            f'{resource_dict["name"]}.{column["name"]}'
+                        )
+                    else:
+                        column['description'] = list(
+                            column_descriptions.keys()
+                        )[0]
+                        newly_described_columns.append(
+                            f'{resource_dict["name"]}.{column["name"]}'
+                        )
+                elif not described_columns.get(column['name']) and not column.get('description'):
+                    non_described_columns.append(
+                        f'{resource_dict["name"]}.{column["name"]}'
+                    )
+            _utils.write_yaml(
+                property_path,
+                property_file_dict,
+            )
+    _LOGGER.info(f'Added descriptions for {len(newly_described_columns)} columns.')
+    _LOGGER.info(f'Found {len(non_described_columns)} columns without description.')
+    if _LOGGER.level <= 10:
+        for column in non_described_columns:
+            _LOGGER.debug(f'Column missing description: {column}')
 
 
 @task
