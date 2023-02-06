@@ -338,7 +338,7 @@ def migrate(
                 {
                     'resource_name': nodes[node]['name'],
                     'resource_type': nodes[node]['resource_type'],
-                    'resource_type_plural': None if nodes[node]['resource_type'] not in _SUPPORTED_RESOURCE_TYPES else _SUPPORTED_RESOURCE_TYPES[nodes[node]['resource_type']],
+                    'resource_type_plural': _SUPPORTED_RESOURCE_TYPES.get(nodes[node]['resource_type']),
                     'resource_destination': (
                         Path(
                             Path(
