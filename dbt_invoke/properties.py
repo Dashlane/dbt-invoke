@@ -5,7 +5,6 @@ from pathlib import Path
 import ast
 from collections import defaultdict
 import json
-import functools
 
 from invoke import task
 
