@@ -208,7 +208,6 @@ def echo_macro(ctx):
         f'\n{_utils.get_macro(_MACRO_NAME)}'
     )
 
-@functools.lru_cache
 def _read_manifest(
     target_path
 ):
