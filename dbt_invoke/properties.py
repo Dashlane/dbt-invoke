@@ -398,7 +398,7 @@ def migrate(
                 current_property_yaml.pop(resource_type_plural)
         # Check if there are any properties left in the source file.
         # If there aren't then delete the file.
-        if not set(_SUPPORTED_RESOURCE_TYPES.values()).intersection(current_property_yaml.keys()):
+        if Path(location).read_text().strip() == "":
             try:
                 Path(location).unlink()
             except Exception as e:
