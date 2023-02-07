@@ -334,39 +334,20 @@ def migrate(
         patch_path = ctx.config['project_path'] + '/' + nodes[node]['patch_path'].split('//')[1]
         # Add to-be-created property file paths to migration_map
         if patch_path not in migration_map:
-            migration_map[patch_path] = [
-                {
-                    'resource_name': nodes[node]['name'],
-                    'resource_type': nodes[node]['resource_type'],
-                    'resource_type_plural': _SUPPORTED_RESOURCE_TYPES.get(nodes[node]['resource_type']),
-                    'resource_destination': (
-                        Path(
-                            Path(
-                                ctx.config['project_path']
-                            ) / 
-                            resources_map[nodes[node]['name']]['original_file_path']).parents[0] / nodes[node]['name']
-                            ).with_suffix('.yml'),
-                    'resource_index': '',
-                    'resource_properties': ''
-                }
-            ]
-        else:
-            migration_map[patch_path] += [
-                {
-                    'resource_name': nodes[node]['name'],
-                    'resource_type': nodes[node]['resource_type'],
-                    'resource_type_plural': None if nodes[node]['resource_type'] not in _SUPPORTED_RESOURCE_TYPES else _SUPPORTED_RESOURCE_TYPES[nodes[node]['resource_type']],
-                    'resource_destination': (
-                        Path(
-                            Path(
-                                ctx.config['project_path']
-                            ) / 
-                            resources_map[nodes[node]['name']]['original_file_path']).parents[0] / nodes[node]['name']
-                            ).with_suffix('.yml'),
-                    'resource_index': '',
-                    'resource_properties': ''
-                }
-            ]
+            migration_map[patch_path] = list()
+        migration_map[patch_path].append(
+            {
+                'resource_name': nodes[node]['name'],
+                'resource_type': nodes[node]['resource_type'],
+                'resource_type_plural': _SUPPORTED_RESOURCE_TYPES.get(nodes[node]['resource_type']),
+                'resource_destination': Path(
+                    ctx.config['project_path'],
+                    resources_map[nodes[node]['name']]['original_file_path'],
+                ).with_suffix('.yml'),
+                'resource_index': '',
+                'resource_properties': ''
+            }
+        )
     # Keep track of what items we are going to remove from the source yaml
     indices_to_remove = defaultdict(list)
     # Go through the map and collect the definitions of the objects that need moving
