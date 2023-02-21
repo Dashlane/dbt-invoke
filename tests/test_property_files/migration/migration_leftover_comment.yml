@@ -1,0 +1,24 @@
+version: 2
+# Leftover comment
+models:
+- name: customers # Comment that should move with migration
+  description: ''
+  columns:
+  - name: customer_id
+    description: ''
+  - name: created_at
+    description: ''
+- name: orders
+  description: ''
+  columns:
+  - name: order_id
+    description: ''
+  - name: customer_id
+    description: ''
+  - name: item_id
+    description: ''
+  - name: quantity
+    description: ''
+  # Comment that should move with migration
+  - name: order_at
+    description: ''

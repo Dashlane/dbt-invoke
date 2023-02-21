@@ -2,7 +2,6 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 import shutil
-import os
 
 from dbt_invoke import properties
 from dbt_invoke.internal import _utils
@@ -77,38 +76,65 @@ class TestProperties(TestDbtInvoke):
         for full_file_path in all_files_actual_properties:
             self.assertFalse(full_file_path.exists())
 
-    def test_migrate(self):
+    def migrate_wrapper(self, resource_type, *args, **kwargs):
         """
-        Test the migration of structure from one property file for
-        multiple resources to one property file per resource
+        Helper method for testing different migration patterns
 
+        :param resource_type: An argument for listing dbt resources
+            (run "dbt ls --help" for details)
+        :param args: The names of files to consider for migration
+        :param kwargs: The keys are post-migration relative locations
+            from the test project directory (using '__' in place of
+            '/'). The values are of type bool, representing whether to
+            compare migration results and expectations files. If False,
+            a test will be conducted to assert that the file does not
+            exist (this is useful for checking that empty migration
+            files are deleted appropriately).
         :return: None
         """
-        # Copy migration property file to the test project
-        source_path = Path(
+        # Copy migration property files to the test project
+        migration_base_path = Path(
             self.test_base_dir,
             'test_property_files',
-            'combined_migration.yml',
+            'migration',
         )
-        target_path = Path(
-            self.project_dir,
-            'models',
-            'combined_migration.yml',
-        )
-        shutil.copy(source_path, target_path)
+        migration_file_names = [*args]
+        migration_paths = {
+            Path(
+                migration_base_path,
+                file_name,
+            ): Path(
+                self.project_dir,
+                'models',
+                file_name,
+            )
+            for file_name in migration_file_names
+        }
+        for source_path, target_path in migration_paths.items():
+            shutil.copy(source_path, target_path)
         # Run migration
         properties.migrate(
             self.ctx,
-            str(target_path.resolve()),
+            resource_type=resource_type,
             project_dir=self.project_dir,
             profiles_dir=self.profiles_dir,
             log_level='DEBUG',
         )
-        # Check that the new property files contain the expected contents
-        for file_location, exp_props in self.expected_properties.items():
-            full_file_path = Path(self.project_dir, file_location)
-            actual_props = _utils.parse_yaml(full_file_path)
-            self.assertEqual(exp_props, actual_props)
+        # Compare migration results to expectations
+        expected_base_path = Path(migration_base_path, 'expected')
+        relative_paths = {
+            Path(*relative_location.split('__')).with_suffix('.yml'): compare
+            for relative_location, compare in kwargs.items()
+        }
+        for relative_path, compare in relative_paths.items():
+            migrated_path = Path(self.project_dir, relative_path)
+            if compare:
+                expected_path = Path(expected_base_path, relative_path)
+                self.assertTrue(
+                    self.compare_files(migrated_path, expected_path)
+                )
+            else:
+                self.assertFalse(migrated_path.exists())
         # Delete the new property files
         with patch('builtins.input', return_value='y'):
             properties.delete(
@@ -117,21 +143,49 @@ class TestProperties(TestDbtInvoke):
                 profiles_dir=self.profiles_dir,
                 log_level='DEBUG',
             )
-        # Check that the migration property file has been updated with
-        # the expected contents
-        expected_path = Path(
-            self.test_base_dir,
-            'test_property_files',
-            'combined_migration_expected.yml',
+        for target_path in migration_paths.values():
+            try:
+                target_path.unlink()
+            except FileNotFoundError:
+                continue
+
+    def test_partial_migrate(self):
+        """
+        Test the partial migration of structure from one property file
+        for multiple resources to one property file per resource
+
+        :return: None
+        """
+        self.migrate_wrapper(
+            'model',
+            'migration_leftover_comment.yml',
+            analyses__revenue_by_daily_cohort=False,
+            data__items=False,
+            models__marts__core__customers=True,
+            models__marts__core__orders=True,
+            models__migration_leftover_comment=True,
+            snapshots__items_snapshot=False,
         )
-        actual_post_migration_props = _utils.parse_yaml(target_path)
-        exp_post_migration_props = _utils.parse_yaml(expected_path)
-        self.assertEqual(
-            actual_post_migration_props,
-            exp_post_migration_props,
+
+    def test_full_migrate(self):
+        """
+        Test the full migration of structure from one property file for
+        multiple resources to one property file per resource
+
+        :return: None
+        """
+        self.migrate_wrapper(
+            None,
+            'migration_leftover_comment.yml',
+            'migration_no_leftover_comment.yml',
+            analyses__revenue_by_daily_cohort=True,
+            data__items=True,
+            models__marts__core__customers=True,
+            models__marts__core__orders=True,
+            models__migration_leftover_comment=True,
+            models__migration_no_leftover_comment=False,
+            snapshots__items_snapshot=True,
         )
-        # Delete the migration property file from the test project
-        os.remove(target_path)
 
     def test_multiline(self):
         self.edit_update_compare(
@@ -211,7 +265,7 @@ class TestProperties(TestDbtInvoke):
         self.assertTrue(self.compare_files(target_path, expected_path))
 
         # clean up
-        os.remove(target_path)
+        target_path.unlink()
 
 
 if __name__ == '__main__':

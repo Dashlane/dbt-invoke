@@ -1,0 +1,15 @@
+version: 2
+snapshots:
+- name: items_snapshot
+  description: ''
+  columns: # Comment that should move with migration
+  - name: item_id
+    description: ''
+  - name: price
+    description: ''
+  - name: updated_at
+    description: ''
+  - name: dbt_valid_from
+    description: ''
+  - name: dbt_valid_to
+    description: ''

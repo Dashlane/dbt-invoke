@@ -1,0 +1,10 @@
+version: 2
+analyses:
+- name: revenue_by_daily_cohort
+  description: ''
+  columns:
+  # Comment that should move with migration
+  - name: created_on
+    description: ''
+  - name: total_revenue
+    description: ''

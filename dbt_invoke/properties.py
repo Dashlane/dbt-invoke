@@ -247,8 +247,8 @@ def migrate(
     log_level=None,
 ):
     """
-    Change structure from one property file for multiple resources to
-    one property file per resource
+    Change structure from multiple resources per property file to one
+    resource per property file
 
     :param ctx: An Invoke context object
     :param resource_type: An argument for listing dbt resources
@@ -281,7 +281,8 @@ def migrate(
     """
     # Run _initiate_alterations to retrieve the locations of the
     # resources for which properties will be migrated.
-    # This updates the context object with some new goodies
+    # Importantly, this also updates ctx to contain the dbt project
+    # path.
     _, transformed_ls_results = _initiate_alterations(
         ctx,
         resource_type=resource_type,
@@ -298,151 +299,160 @@ def migrate(
         state=state,
         log_level=log_level,
     )
-    # Parse the manifest file.
-    nodes = _read_manifest(ctx.get('target_path'))['nodes']
-    # Create a placeholder map object
-    # Structure of a migration map
-    # config_path = A string that represents the location of a yaml file
-    #   resource_list = A list of all nodes which were found in this config location
-    #       resource_name = The name which should be used within the yaml file
-    #       resource_desitination = A Path object which describes where the resource lives if we adhere to the 1:1 model -> yaml
-    #       resource_properties = The definition extracted from the config_path for this resource
-    #       resource_index = An integer representing the position within the source yaml which is an OrderedDict object where the properties were found
+    # Parse nodes from the manifest file
+    nodes = _read_manifest(ctx['target_path'])['nodes']
+    # Create a migration_map dict to keep track of existing property
+    # files from which properties for one or more resources will be
+    # migrated. Structure of migration_map:
     # {
-    #   config_path: {
-    #       resource_list: [
-    #           {
-    #               resource_name: str,
-    #               resource_type: str,
-    #               resource_type_plural: str,
-    #               resource_destination: Path,
-    #               resource_definition: OrderedDict
-    #               resource_index: int
-    #           }
-    #       ]
-    #   }
+    #     <existing_property_path1>: [
+    #         {
+    #             'name': '<resource1_name>',
+    #             'resource_type': '<resource1_resource_type>',
+    #             'resource_type_plural': '<resource1_resource_type_plural>',
+    #             'resource_path': <Path of resource1>,
+    #             'property_path': <intended Path of resource1 properties>,
+    #         },
+    #         {
+    #             'name': '<resource2_name>',
+    #             ...
+    #         },
+    #         ...
+    #     ],
+    #     <existing_property_path2>: [
+    #         ...
+    #     ],
+    #     ...
     # }
-    migration_map = dict()
-    # Convert dbt ls data into something easier to search
-    resources_map = {
-        resource_dict['name']: resource_dict
-        for resource_dict in transformed_ls_results.values()
-    }
-    # Using the nodes from the manifest create a data structure that keeps track of what existing yaml files we have
-    # and what resources are defined there in each.
-    for node in nodes:
-        # If there is no config for this node move on
-        if not nodes[node]['patch_path']:
+    migration_map = defaultdict(list)
+    # Using the nodes from the manifest create a data structure that
+    # keeps track of what existing yaml files we have and what
+    # resources are defined in each.
+    for node, metadata in nodes.items():
+        # Skip if node is not a selected node.
+        # This is not only for efficiency, but also to confirm that the
+        # node comes from the correct dbt project
+        # (transformed_ls_results should already only contain nodes from
+        # the correct dbt project).
+        if metadata['original_file_path'] not in transformed_ls_results:
             continue
-        # Parse the patch path to make a full file system path
-        patch_path = (
-            ctx.config['project_path']
-            + '/'
-            + nodes[node]['patch_path'].split('//')[1]
+        # Skip if node is not present in any existing property file
+        elif not metadata.get('patch_path'):
+            continue
+        existing_property_path = Path(
+            ctx.config['project_path'],
+            metadata.get('patch_path').split('//')[-1],
         )
-        # Add to-be-created property file paths to migration_map
-        if patch_path not in migration_map:
-            migration_map[patch_path] = list()
-        migration_map[patch_path].append(
+        resource_path = Path(
+            ctx.config['project_path'],
+            metadata['original_file_path'],
+        )
+        # Add data for to-be-created property files to the migration_map
+        migration_map[existing_property_path].append(
             {
-                'resource_name': nodes[node]['name'],
-                'resource_type': nodes[node]['resource_type'],
+                'name': metadata['name'],
+                'resource_type': metadata['resource_type'],
                 'resource_type_plural': _SUPPORTED_RESOURCE_TYPES.get(
-                    nodes[node]['resource_type']
+                    metadata['resource_type']
                 ),
-                'resource_destination': Path(
-                    ctx.config['project_path'],
-                    resources_map[nodes[node]['name']]['original_file_path'],
-                ).with_suffix('.yml'),
-                'resource_index': '',
-                'resource_properties': '',
+                'resource_path': resource_path,
+                'property_path': resource_path.with_suffix('.yml'),
             }
         )
-    # Keep track of what items we are going to remove from the source yaml
-    indices_to_remove = defaultdict(list)
-    # Go through the map and collect the definitions of the objects that need moving
-    for location, metadata in migration_map.items():
-        # We read each source yaml file once to keep things speedy
-        current_property_yaml = _utils.parse_yaml(location)
-        for definition in metadata:
-            # in instances where the definition is in the correct location we will leave it alone and not bother reading it
-            if definition['resource_destination'] != Path(location):
-                _LOGGER.info(
-                    f"Moving {definition['resource_name']} definition from {location} to {definition['resource_destination']}"
+    # Loop through the migration_map to perform the migration
+    for existing_property_path, resource_list in migration_map.items():
+        # Keep track of items to remove from the existing property file
+        indices_to_remove = defaultdict(list)
+        # Create a set of the resource types for which at least one
+        # resource will be migrated from the existing property file
+        relevant_resource_types_plural = set(
+            [resource['resource_type_plural'] for resource in resource_list]
+        )
+        # Read each relevant property file once to keep things speedy
+        existing_property_file_dict = _utils.parse_yaml(existing_property_path)
+        # For each relevant resource type for this migration, collect
+        # the properties and index position of all resources within the
+        # existing property file
+        existing_properties = {
+            properties['name']: {
+                'resource_type_plural': k,
+                'index': i,
+                'properties': properties,
+            }
+            for k, v in existing_property_file_dict.items()
+            if k in relevant_resource_types_plural
+            for i, properties in enumerate(v)
+        }
+        # For each resource within the existing property path in the
+        # migration_map copy the properties to their intended
+        # destination
+        for resource in resource_list:
+            # Skip if the properties are already in the correct location
+            if existing_property_path == resource['property_path']:
+                continue
+            _LOGGER.info(
+                f"""Moving "{resource['name']}" definition from"""
+                f""" {str(existing_property_path.resolve())} to"""
+                f""" {str(resource['property_path'].resolve())}"""
+            )
+            # Try to create the new property file. Upon success, save
+            # the index of the resource to remove from the migration
+            # property file.
+            try:
+                property_file_dict = _get_property_header(
+                    resource['name'],
+                    resource['resource_type'],
+                    existing_properties[resource['name']]['properties'],
                 )
-                # Find the existing definition
-                # Gather the definition from within the existing yaml file (which could have many resources defined in it)
-                definition['resource_index'] = next(
-                    (
-                        index
-                        for (index, x) in enumerate(
-                            current_property_yaml[
-                                definition['resource_type_plural']
-                            ]
-                        )
-                        if x['name'] == definition['resource_name']
-                    ),
-                    None,
+                _utils.write_yaml(
+                    resource['property_path'],
+                    property_file_dict,
+                    mode='x',
                 )
-                definition['resource_properties'] = current_property_yaml[
-                    definition['resource_type_plural']
-                ][definition['resource_index']]
-                # Try to create each new property file. For each success, save
-                # the index of the resource to remove from the migration
-                # property file.
-                try:
-                    property_file_dict = _get_property_header(
-                        definition['resource_name'],
-                        definition['resource_type'],
-                        definition['resource_properties'],
-                    )
-                    _utils.write_yaml(
-                        definition['resource_destination'],
-                        property_file_dict,
-                        mode='x',
-                    )
-                    indices_to_remove[
-                        definition['resource_type_plural']
-                    ].append(definition['resource_index'])
-                    _LOGGER.info(
-                        f"Created {definition['resource_destination']}"
-                    )
-                except Exception as e:
-                    _LOGGER.error(
-                        f"Failed to create {definition['resource_destination']}: {e}"
-                    )
+                indices_to_remove[resource['resource_type_plural']].append(
+                    existing_properties[resource['name']]['index']
+                )
+                _LOGGER.info(f"Created {resource['property_path']}")
+            except Exception:
+                _LOGGER.exception(
+                    f"Failed to create {resource['property_path']}"
+                )
         # Remove migrated resources from migration_property_file_dict
         removed_counter = 0
         for resource_type_plural, indices in indices_to_remove.items():
             for i in sorted(indices, reverse=True):
-                current_property_yaml[resource_type_plural].pop(i)
+                existing_property_file_dict[resource_type_plural].pop(i)
                 removed_counter += 1
+            # Remove resource type heading if it no longer contains any
+            # resources
+            if len(existing_property_file_dict[resource_type_plural]) == 0:
+                existing_property_file_dict.pop(resource_type_plural)
         # Overwrite the migration property file with its remaining
         # post-migration contents.
-        _utils.write_yaml(location, current_property_yaml)
-        _LOGGER.info(
-            f'Removed {str(removed_counter)} migrated resources from {str(location)}'
-        )
-        # Remove resource types from the source yaml
-        for resource_type_plural, resources in current_property_yaml.items():
-            if (
-                resource_type_plural in _SUPPORTED_RESOURCE_TYPES.values()
-                and len(resources) == 0
-            ):
-                current_property_yaml.pop(resource_type_plural)
-        # Check if there are any properties left in the source file.
-        # If there aren't then delete the file.
-        if Path(location).read_text().strip() == "":
+        try:
+            _utils.write_yaml(
+                existing_property_path,
+                existing_property_file_dict,
+            )
+            _LOGGER.info(
+                f'Removed {str(removed_counter)} migrated resources from'
+                f' {str(existing_property_path.resolve())}'
+            )
+        except Exception:
+            _LOGGER.exception(
+                f"Failed to update {str(existing_property_path.resolve())}"
+            )
+        # Delete the existing property file if it only contains version info
+        if existing_property_path.read_text().strip().lower() == "version: 2":
             try:
-                Path(location).unlink()
-            except Exception as e:
-                _LOGGER.error(f"Failed to delete {location}: {e}")
-        else:
-            # If there are update the file to remove those that were migrated.
-            try:
-                _utils.write_yaml(location, current_property_yaml)
-            except Exception as e:
-                _LOGGER.error(f"Failed to update {location}: {e}")
+                existing_property_path.unlink()
+                _LOGGER.info(
+                    f"Deleted {str(existing_property_path.resolve())}"
+                )
+            except Exception:
+                _LOGGER.exception(
+                    f"Failed to delete {str(existing_property_path.resolve())}"
+                )
         _LOGGER.info('Migration successful')
 
 

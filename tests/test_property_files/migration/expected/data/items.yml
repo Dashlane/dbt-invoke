@@ -1,0 +1,11 @@
+version: 2
+seeds:
+- name: items
+  description: ''
+  columns:
+  - name: item_id
+    description: ''
+  - name: price
+    description: ''
+  - name: updated_at
+    description: ''

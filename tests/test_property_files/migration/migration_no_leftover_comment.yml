@@ -1,25 +1,4 @@
 version: 2
-models:
-- name: customers
-  description: ''
-  columns:
-  - name: customer_id
-    description: ''
-  - name: created_at
-    description: ''
-- name: orders
-  description: ''
-  columns:
-  - name: order_id
-    description: ''
-  - name: customer_id
-    description: ''
-  - name: item_id
-    description: ''
-  - name: quantity
-    description: ''
-  - name: order_at
-    description: ''
 seeds:
 - name: items
   description: ''
@@ -33,7 +12,7 @@ seeds:
 snapshots:
 - name: items_snapshot
   description: ''
-  columns:
+  columns: # Comment that should move with migration
   - name: item_id
     description: ''
   - name: price
@@ -48,6 +27,7 @@ analyses:
 - name: revenue_by_daily_cohort
   description: ''
   columns:
+  # Comment that should move with migration
   - name: created_on
     description: ''
   - name: total_revenue
