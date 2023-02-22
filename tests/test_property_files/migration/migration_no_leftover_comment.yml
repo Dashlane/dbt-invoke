@@ -1,0 +1,34 @@
+version: 2
+seeds:
+- name: items
+  description: ''
+  columns:
+  - name: item_id
+    description: ''
+  - name: price
+    description: ''
+  - name: updated_at
+    description: ''
+snapshots:
+- name: items_snapshot
+  description: ''
+  columns: # Comment that should move with migration
+  - name: item_id
+    description: ''
+  - name: price
+    description: ''
+  - name: updated_at
+    description: ''
+  - name: dbt_valid_from
+    description: ''
+  - name: dbt_valid_to
+    description: ''
+analyses:
+- name: revenue_by_daily_cohort
+  description: ''
+  columns:
+  # Comment that should move with migration
+  - name: created_on
+    description: ''
+  - name: total_revenue
+    description: ''

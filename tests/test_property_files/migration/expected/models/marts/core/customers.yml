@@ -1,0 +1,9 @@
+version: 2
+models:
+- name: customers # Comment that should move with migration
+  description: ''
+  columns:
+  - name: customer_id
+    description: ''
+  - name: created_at
+    description: ''

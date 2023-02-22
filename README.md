@@ -46,6 +46,9 @@ pip install dbt-invoke
   - For example, given a resource file in the location 
     `models/marts/core/users.sql`, this tool will create, update, or delete a 
     property file in the location `models/marts/core/users.yml`.
+  - If your dbt project defines properties for multiple resources per `.yml` file, see the
+    [Migrating to One Resource Per Property File](#migrating-to-one-resource-per-property-file)
+    section.
 
     
 - Any newly generated property files are created with the correct resource 
@@ -165,6 +168,26 @@ dbt-invoke properties.delete <options>
   except for `--threads`.
 
 
+### Migrating to One Resource Per Property File
+- Two conventions for dbt property files are:
+  1. One resource per property file
+  2. Multiple resources per property file
+
+
+- dbt-invoke abides by the "One resource per property file" convention.
+- If your dbt project uses the "Multiple resources per property file"
+  convention, you can migrate to one resource per property file by using
+  dbt-invoke's `properties.migrate` command as shown here:
+  ```shell
+  dbt-invoke properties.migrate <options>
+  ```
+  - Successfully migrated properties will be removed from existing
+    multiple-resource property files.
+    - At then end of migration, property files that are newly empty (other than
+      `version: 2`) will be automatically deleted.
+  - `<options>` uses the same arguments as for creating/updating property
+    files, except for `--threads`.
+
 ### Help
 
 - To view the list of available commands and their short descriptions, run:
@@ -179,9 +202,10 @@ dbt-invoke properties.delete <options>
 
 ### Limitations
 
-- `dbt-invoke` will try to preserve formatting and comments when updating existing 
-  files. If you want to preserve line-breaks, use `>` or `|` on your multiline strings,
-  as recommended [here](https://stackoverflow.com/a/21699210/15202709).
+- dbt-invoke will try to preserve formatting and comments when updating
+  existing files. If you want to preserve line-breaks, use `>` or `|` on your
+  multiline strings, as recommended
+  [here](https://stackoverflow.com/a/21699210/15202709).
 - In order to collect or update the list of columns that should appear in 
   each property file, dbt's `get_columns_in_query` macro is run for each
   matching resource. As of the time of writing, `get_columns_in_query` uses a
@@ -192,7 +216,7 @@ dbt-invoke properties.delete <options>
   - This may be partially remedied by increasing the value of the `--threads` 
     option in `dbt-invoke properties.update`.
 - dbt-invoke is tested against:
-  - Python 3.7 and 3.9
-  - dbt 0.18, 0.19, and 1.0
+  - Python 3.7 and 3.10
+  - dbt 0.18, 0.19, and 1.1
   - macos-latest, windows-latest, ubuntu-latest
 - dbt-invoke has not been tested across different types of data warehouses.
