@@ -799,7 +799,9 @@ def _get_columns(ctx, resource_location, resource_dict, **kwargs):
                 #       }
                 #   }
                 x.get('info', dict()).get('code'),
-            ) == 'M011', result_lines
+            )
+            == 'M011',
+            result_lines,
         )
     )
     if len(relevant_lines) >= 1:
