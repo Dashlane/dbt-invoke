@@ -46,9 +46,8 @@ pip install dbt-invoke
   - For example, given a resource file in the location 
     `models/marts/core/users.sql`, this tool will create, update, or delete a 
     property file in the location `models/marts/core/users.yml`.
-  - If your dbt project already use a single `.yml` file to define properties
-    for multiple resources, see the
-    [Migrating to One Property File Per Resource](#migrating-to-one-property-file-per-resource)
+  - If your dbt project defines properties for multiple resources per `.yml` file, see the
+    [Migrating to One Resource Per Property File](#migrating-to-one-resource-per-property-file)
     section.
 
     
@@ -169,23 +168,25 @@ dbt-invoke properties.delete <options>
   except for `--threads`.
 
 
-### Migrating to One Property File Per Resource
+### Migrating to One Resource Per Property File
 - Two conventions for dbt property files are:
-  1. One property file per resource
-  2. One property file for multiple resources
+  1. One resource per property file
+  2. Multiple resources per property file
 
 
-- dbt-invoke abides by the "one property file per resource" convention.
-- If your dbt project uses the "one property file for multiple resources
-  convention", you can migrate to one property file per resource, by using
+- dbt-invoke abides by the "One resource per property file" convention.
+- If your dbt project uses the "Multiple resources per property file"
+  convention, you can migrate to one resource per property file by using
   dbt-invoke's `properties.migrate` command as shown here:
   ```shell
-  dbt-invoke properties.migrate path/to/multiple_resource_property_file.yml <options>
+  dbt-invoke properties.migrate <options>
   ```
-  - Successfully migrated properties will be removed from the existing
-    multiple-resource property file.
-  - `<options>` uses the same arguments as for creating/updating property files,
-    except for `--threads`.
+  - Successfully migrated properties will be removed from existing
+    multiple-resource property files.
+    - At then end of migration, property files that are newly empty (other than
+      `version: 2`) will be automatically deleted.
+  - `<options>` uses the same arguments as for creating/updating property
+    files, except for `--threads`.
 
 ### Help
 
@@ -201,9 +202,10 @@ dbt-invoke properties.delete <options>
 
 ### Limitations
 
-- `dbt-invoke` will try to preserve formatting and comments when updating existing 
-  files. If you want to preserve line-breaks, use `>` or `|` on your multiline strings,
-  as recommended [here](https://stackoverflow.com/a/21699210/15202709).
+- dbt-invoke will try to preserve formatting and comments when updating
+  existing files. If you want to preserve line-breaks, use `>` or `|` on your
+  multiline strings, as recommended
+  [here](https://stackoverflow.com/a/21699210/15202709).
 - In order to collect or update the list of columns that should appear in 
   each property file, dbt's `get_columns_in_query` macro is run for each
   matching resource. As of the time of writing, `get_columns_in_query` uses a
