@@ -780,19 +780,49 @@ def _get_columns(ctx, resource_location, resource_dict, **kwargs):
             ctx, _MACRO_NAME, hide=True, logger=_LOGGER, sql=sql, **kwargs
         )
 
-    # from dbt-core v1.0.0 onwards, run_operations INFO logs have code M011 and messages have key 'msg'
-    # https://github.com/dbt-labs/dbt-core/blob/22b1a09aa218e8152b0c2dd261abe2503ea15ddb/core/dbt/events/types.py#L401
     relevant_lines = list(
-        filter(lambda x: x.get('code') == 'M011', result_lines)
+        filter(
+            lambda x: x.get(
+                # dbt-core>=1.0,<1.4
+                #   run-operation logs contain structure
+                #   {
+                #       'code': 'M011',
+                #       'msg': ['column1', 'column2', ...]
+                #   }
+                'code',
+                # dbt-core>=1.4
+                #   run-operation logs contain structure
+                #   {
+                #       'info': {
+                #           'code': 'M011',
+                #           'msg': "['column1', 'column2', ...]" # string value
+                #       }
+                #   }
+                x.get('info', dict()).get('code'),
+            )
+            == 'M011',
+            result_lines,
+        )
     )
     if len(relevant_lines) >= 1:
-        columns = relevant_lines[-1].get('msg')
+        relevant_line = relevant_lines[-1]
+        columns = relevant_line.get(
+            'msg',
+            relevant_line.get('info', dict()).get('msg'),
+        )
     else:
         # for older dbt-core versions, we need to cross fingers a little harder
         relevant_lines = result_lines[1:]
         # also, the message key is different
         columns = relevant_lines[-1].get('message')
-        # columns are not passed as valid json but as a string representation of a list
+    # In some version of dbt columns are not passed as valid json but as
+    # a string representation of a list
+    is_string_list = (
+        isinstance(columns, str)
+        and columns.startswith('[')
+        and columns.endswith(']')
+    )
+    if is_string_list:
         columns = ast.literal_eval(columns)
     return columns
 
