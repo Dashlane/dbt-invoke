@@ -5,7 +5,12 @@ import sys
 import platform
 import re
 from dbt.task.base import get_nearest_project_dir
-from importlib.metadata import version
+try:
+    from importlib.metadata import version
+    DBT_VERSION = version('dbt-core')
+except ImportError:
+    import pkg_resources
+    DBT_VERSION = pkg_resources.get_distribution('dbt-core').version
 from ruamel.yaml import YAML, YAMLError
 
 MACROS = {
@@ -108,7 +113,7 @@ def get_project_info(ctx, project_dir=None):
     :return: None
     """
     project = Project(project_dir)
-    if version('dbt-core') < '1.5.0':
+    if DBT_VERSION < '1.5.0':
         project_path = get_nearest_project_dir(project)
     else:
         project_path = get_nearest_project_dir(project.project_dir)
