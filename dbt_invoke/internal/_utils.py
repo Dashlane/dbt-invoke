@@ -5,12 +5,17 @@ import sys
 import platform
 import re
 from dbt.task.base import get_nearest_project_dir
+
 try:
     from importlib.metadata import version
+
     DBT_VERSION = version('dbt-core')
+
 except ImportError:
     import pkg_resources
+
     DBT_VERSION = pkg_resources.get_distribution('dbt-core').version
+
 from ruamel.yaml import YAML, YAMLError
 
 MACROS = {
