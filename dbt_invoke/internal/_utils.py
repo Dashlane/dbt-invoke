@@ -107,7 +107,7 @@ def get_project_info(ctx, project_dir=None):
     :return: None
     """
     project = Project(project_dir)
-    project_path = get_nearest_project_dir(project)
+    project_path = get_nearest_project_dir(project.project_dir)
     project_yml_path = Path(project_path, 'dbt_project.yml')
     # Get project configuration values from dbt_project.yml
     # (or use dbt defaults)
