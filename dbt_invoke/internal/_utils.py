@@ -5,6 +5,17 @@ import sys
 import platform
 import re
 from dbt.task.base import get_nearest_project_dir
+
+try:
+    from importlib.metadata import version
+
+    DBT_VERSION = version('dbt-core')
+
+except ImportError:
+    import pkg_resources
+
+    DBT_VERSION = pkg_resources.get_distribution('dbt-core').version
+
 from ruamel.yaml import YAML, YAMLError
 
 MACROS = {
@@ -107,7 +118,10 @@ def get_project_info(ctx, project_dir=None):
     :return: None
     """
     project = Project(project_dir)
-    project_path = get_nearest_project_dir(project)
+    if DBT_VERSION < '1.5.0':
+        project_path = get_nearest_project_dir(project)
+    else:
+        project_path = get_nearest_project_dir(project.project_dir)
     project_yml_path = Path(project_path, 'dbt_project.yml')
     # Get project configuration values from dbt_project.yml
     # (or use dbt defaults)
