@@ -211,6 +211,13 @@ class TestProperties(TestDbtInvoke):
             expected_file="customers_multiline_quotes_expected.yml",
         )
 
+    def test_preserve_quotes(self):
+        self.edit_update_compare(
+            "customers_preserve_quotes.yml",
+            target_model="customers",
+            expected_file="customers_preserve_quotes_expected.yml",
+        )
+
     def test_long_string(self):
         self.edit_update_compare(
             "customers_long_string.yml",

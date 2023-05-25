@@ -83,6 +83,7 @@ def parse_yaml(location):
     :return: The contents of the yaml file
     """
     yaml = YAML(typ="rt")
+    yaml.preserve_quotes = True
     with open(location, 'r') as stream:
         try:
             parsed_yaml = yaml.load(stream)
@@ -101,6 +102,7 @@ def write_yaml(location, data, mode='w'):
     :return: None
     """
     yaml = YAML(typ="rt")
+    yaml.preserve_quotes = True
     try:
         with open(location, mode) as stream:
             yaml.dump(data, stream)
