@@ -42,12 +42,13 @@ class TestUtils(TestDbtInvoke):
                     project_dir=self.project_dir,
                     profiles_dir=self.profiles_dir,
                     supported_resource_types=SUPPORTED_RESOURCE_TYPES,
-                    output='path',
+                    output='json',
                     logger=self.logger,
                     **dbt_ls_kwargs,
                 )
                 result_parts = [
-                    list(Path(line).parts) for line in result_lines
+                    list(Path(line['original_file_path']).parts)
+                    for line in result_lines
                 ]
                 self.assertCountEqual(result_parts, expected_result_parts)
 

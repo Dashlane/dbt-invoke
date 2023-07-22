@@ -120,10 +120,7 @@ def get_project_info(ctx, project_dir=None):
     :return: None
     """
     project = Project(project_dir)
-    if DBT_VERSION < '1.5.0':
-        project_path = get_nearest_project_dir(project)
-    else:
-        project_path = get_nearest_project_dir(project.project_dir)
+    project_path = get_nearest_project_dir(project.project_dir)
     project_yml_path = Path(project_path, 'dbt_project.yml')
     # Get project configuration values from dbt_project.yml
     # (or use dbt defaults)
@@ -197,15 +194,10 @@ def dbt_ls(
         # Because we set the dbt global arg "--log-format json", if
         # line is valid json then it may be an actual result or it
         # may be some other output from dbt, like a warning.
-        try:
-            line_dict = json.loads(line)
-        # If line is not valid json, then it should be an actual
-        # result. This is because even when the "dbt ls" command
-        # arg "--output" is not set to json, non-result logs will
-        # still be in json format (due to the dbt global arg
-        # "--log-format json").
-        except ValueError:
-            result_lines_filtered.append(line)
+        data = json.loads(line).get("data")
+        if data and "msg" in data:
+            line_dict = json.loads(data["msg"])
+        else:
             continue
         # If 'resource_type' is in line_dict, then this is likely
         # an actual result and not something else like a warning.

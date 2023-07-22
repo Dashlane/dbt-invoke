@@ -61,6 +61,10 @@ expected_properties:
             description: ''
           - name: updated_at
             description: ''
+          - name: dbt_scd_id
+            description: ''
+          - name: dbt_updated_at
+            description: ''
           - name: dbt_valid_from
             description: ''
           - name: dbt_valid_to

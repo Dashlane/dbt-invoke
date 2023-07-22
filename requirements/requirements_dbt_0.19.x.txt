@@ -1,9 +1,0 @@
-agate<1.6.2
-dbt-core~=0.19.0
-dbt-sqlite~=0.1.0
-invoke>=1.4.1
-MarkupSafe==2.0.1
-pytz<2021.0
-PyYAML>=5.1
-ruamel.yaml>=0.17.12
--e .

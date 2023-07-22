@@ -782,25 +782,7 @@ def _get_columns(ctx, resource_location, resource_dict, **kwargs):
 
     relevant_lines = list(
         filter(
-            lambda x: x.get(
-                # dbt-core>=1.0,<1.4
-                #   run-operation logs contain structure
-                #   {
-                #       'code': 'M011',
-                #       'msg': ['column1', 'column2', ...]
-                #   }
-                'code',
-                # dbt-core>=1.4
-                #   run-operation logs contain structure
-                #   {
-                #       'info': {
-                #           'code': 'M011',
-                #           'msg': "['column1', 'column2', ...]" # string value
-                #       }
-                #   }
-                x.get('info', dict()).get('code'),
-            )
-            == 'M011',
+            lambda x: x["info"].get("code") == "I062",
             result_lines,
         )
     )
