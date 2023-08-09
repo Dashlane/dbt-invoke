@@ -59,11 +59,13 @@ class TestDbtInvoke(unittest.TestCase):
             'dbt snapshot'
             f' --project-dir {cls.project_dir}'
             f' --profiles-dir {cls.project_dir}'
+            f' --target-path {cls.project_dir}/target'
         )
         cls.dbt_compile = (
             'dbt compile'
             f' --project-dir {cls.project_dir}'
             f' --profiles-dir {cls.project_dir}'
+            f' --target-path {cls.project_dir}/target'
         )
         invoke.run(cls.dbt_seed)
         invoke.run(cls.dbt_clean)
