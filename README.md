@@ -216,6 +216,6 @@ dbt-invoke properties.delete <options>
   - This may be partially remedied by increasing the value of the `--threads` 
     option in `dbt-invoke properties.update`.
 - dbt-invoke is tested against:
-  - dbt 0.18, 0.19, 1.1, and 1.4
+  - dbt 1.5 and 1.6
   - macos-latest, windows-latest, ubuntu-latest
 - dbt-invoke has not been tested across different types of data warehouses.
