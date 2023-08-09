@@ -22,7 +22,7 @@ setup(
     url='https://github.com/Dashlane/dbt-invoke',
     packages=find_packages(),
     install_requires=['invoke>=1.4.1', 'PyYAML>=5.1', 'ruamel.yaml>=0.17.12'],
-    python_requires='>=3.6.0',
+    python_requires='>=3.7.0',
     entry_points={
         'console_scripts': ["dbt-invoke = dbt_invoke.main:program.run"]
     },
