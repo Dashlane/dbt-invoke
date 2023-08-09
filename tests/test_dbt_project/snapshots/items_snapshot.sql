@@ -6,5 +6,5 @@
           updated_at='updated_at'
         )
     }}
-    select * from {{ ref('items') }}
+    select * from {{ source('external_source', 'items') }}
 {% endsnapshot %}

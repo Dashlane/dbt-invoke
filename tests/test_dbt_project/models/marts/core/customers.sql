@@ -2,4 +2,4 @@ SELECT
     customer_id
     , created_at
 FROM
-    customers
+    {{ source('external_source', 'customers') }}

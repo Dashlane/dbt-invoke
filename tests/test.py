@@ -1,11 +1,9 @@
+import itertools
 import os
+import sys
 import unittest
 from pathlib import Path
 from unittest.mock import patch
-import sys
-import pkg_resources
-import shutil
-import itertools
 
 import invoke
 
@@ -27,24 +25,6 @@ class TestDbtInvoke(unittest.TestCase):
         cls.config_path = Path(PARENT_DIR, 'test_config.yml')
         cls.config = _utils.parse_yaml(cls.config_path)
 
-        # for backward compatibility, select the correct dbt_project.yml file
-        if pkg_resources.get_distribution("dbt-core").version >= '1.0.0':
-            shutil.copy(
-                Path(PARENT_DIR, 'dbt_project_files/dbt_project.yml'),
-                Path(
-                    PARENT_DIR, cls.config['project_name'], 'dbt_project.yml'
-                ),
-            )
-        else:
-            shutil.copy(
-                Path(
-                    PARENT_DIR, 'dbt_project_files/dbt_project_pre_dbt_v1.yml'
-                ),
-                Path(
-                    PARENT_DIR, cls.config['project_name'], 'dbt_project.yml'
-                ),
-            )
-
         cls.project_dir = Path(PARENT_DIR, cls.config['project_name'])
         cls.profiles_dir = Path(PARENT_DIR, cls.config['project_name'])
         cls.test_base_dir = PARENT_DIR
@@ -58,18 +38,40 @@ class TestDbtInvoke(unittest.TestCase):
             cls.ctx.config['macro_paths'][0],
             f'{cls.macro_name}.sql',
         )
+        cls.dbt_seed = (
+            'dbt seed'
+            f' --project-dir {cls.project_dir}'
+            f' --profiles-dir {cls.project_dir}'
+            f' --target-path {cls.project_dir}/target'
+        )
         cls.dbt_clean = (
             'dbt clean'
             f' --project-dir {cls.project_dir}'
             f' --profiles-dir {cls.project_dir}'
         )
+        cls.dbt_run = (
+            'dbt run'
+            f' --project-dir {cls.project_dir}'
+            f' --profiles-dir {cls.project_dir}'
+            f' --target-path {cls.project_dir}/target'
+        )
+        cls.dbt_snapshot = (
+            'dbt snapshot'
+            f' --project-dir {cls.project_dir}'
+            f' --profiles-dir {cls.project_dir}'
+            f' --target-path {cls.project_dir}/target'
+        )
         cls.dbt_compile = (
             'dbt compile'
             f' --project-dir {cls.project_dir}'
             f' --profiles-dir {cls.project_dir}'
+            f' --target-path {cls.project_dir}/target'
         )
+        invoke.run(cls.dbt_seed)
         invoke.run(cls.dbt_clean)
         invoke.run(cls.dbt_compile)
+        invoke.run(cls.dbt_run)
+        invoke.run(cls.dbt_snapshot)
 
     def setUp(self):
         """

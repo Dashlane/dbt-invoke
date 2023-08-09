@@ -5,4 +5,4 @@ SELECT
     , quantity
     , order_at
 FROM
-    orders
+    {{ source('external_source', 'orders') }}

@@ -521,25 +521,7 @@ def _transform_ls_results(ctx, **kwargs):
     potential_result_paths = None
     results = dict()
     for i, potential_result in enumerate(potential_results):
-        if 'original_file_path' in potential_result:
-            potential_result_path = potential_result['original_file_path']
-        # Before dbt version 0.20.0, original_file_path was not
-        # included in the json response of "dbt ls". For older
-        # versions of dbt, we need to run "dbt ls" with the
-        # "--output path" argument in order to retrieve paths
-        else:
-            if potential_result_paths is None:
-                potential_result_paths = _utils.dbt_ls(
-                    ctx,
-                    supported_resource_types=_SUPPORTED_RESOURCE_TYPES,
-                    logger=_LOGGER,
-                    output='path',
-                    **kwargs,
-                )
-                assert len(potential_result_paths) == len(
-                    potential_results
-                ), 'Length of results differs from length of result details'
-            potential_result_path = potential_result_paths[i]
+        potential_result_path = potential_result['original_file_path']
         if Path(ctx.config['project_path'], potential_result_path).exists():
             results[potential_result_path] = potential_result
     _LOGGER.info(
@@ -782,25 +764,7 @@ def _get_columns(ctx, resource_location, resource_dict, **kwargs):
 
     relevant_lines = list(
         filter(
-            lambda x: x.get(
-                # dbt-core>=1.0,<1.4
-                #   run-operation logs contain structure
-                #   {
-                #       'code': 'M011',
-                #       'msg': ['column1', 'column2', ...]
-                #   }
-                'code',
-                # dbt-core>=1.4
-                #   run-operation logs contain structure
-                #   {
-                #       'info': {
-                #           'code': 'M011',
-                #           'msg': "['column1', 'column2', ...]" # string value
-                #       }
-                #   }
-                x.get('info', dict()).get('code'),
-            )
-            == 'M011',
+            lambda x: x["info"].get("code") == "I062",
             result_lines,
         )
     )
@@ -810,21 +774,16 @@ def _get_columns(ctx, resource_location, resource_dict, **kwargs):
             'msg',
             relevant_line.get('info', dict()).get('msg'),
         )
-    else:
-        # for older dbt-core versions, we need to cross fingers a little harder
-        relevant_lines = result_lines[1:]
-        # also, the message key is different
-        columns = relevant_lines[-1].get('message')
-    # In some version of dbt columns are not passed as valid json but as
-    # a string representation of a list
-    is_string_list = (
-        isinstance(columns, str)
-        and columns.startswith('[')
-        and columns.endswith(']')
-    )
-    if is_string_list:
-        columns = ast.literal_eval(columns)
-    return columns
+        # In some version of dbt columns are not passed as valid json but as
+        # a string representation of a list
+        is_string_list = (
+            isinstance(columns, str)
+            and columns.startswith('[')
+            and columns.endswith(']')
+        )
+        if is_string_list:
+            columns = ast.literal_eval(columns)
+        return columns
 
 
 def _structure_property_file_dict(location, resource_dict, columns_list):

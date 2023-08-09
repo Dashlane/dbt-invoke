@@ -2,7 +2,7 @@ name: test_dbt_project
 version: 1.0.0
 config-version: 2
 
-profile: dbt-sqlite
+profile: dbt-duckdb
 
 seed-paths: ["data"]
 

@@ -1,0 +1,7 @@
+agate>=1.6,<1.7.1
+dbt-core~=1.6.0
+dbt-duckdb~=1.6.0
+invoke>=1.4.1
+PyYAML>=5.1
+ruamel.yaml>=0.17.12
+-e .

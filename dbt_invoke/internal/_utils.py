@@ -120,10 +120,7 @@ def get_project_info(ctx, project_dir=None):
     :return: None
     """
     project = Project(project_dir)
-    if DBT_VERSION < '1.5.0':
-        project_path = get_nearest_project_dir(project)
-    else:
-        project_path = get_nearest_project_dir(project.project_dir)
+    project_path = get_nearest_project_dir(project.project_dir)
     project_yml_path = Path(project_path, 'dbt_project.yml')
     # Get project configuration values from dbt_project.yml
     # (or use dbt defaults)
@@ -206,6 +203,11 @@ def dbt_ls(
         # "--log-format json").
         except ValueError:
             result_lines_filtered.append(line)
+            continue
+        data = line_dict.get("data")
+        if data and "msg" in data:
+            line_dict = json.loads(data["msg"])
+        else:
             continue
         # If 'resource_type' is in line_dict, then this is likely
         # an actual result and not something else like a warning.
