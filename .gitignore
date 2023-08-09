@@ -139,3 +139,7 @@ cython_debug/
 
 # testing stuff
 dbt_invoke/test_run.py
+
+# duck db files
+*.duckdb
+.user.yml

@@ -1,7 +1,7 @@
 sources:
   - name: external_source
     meta:
-      external_location: "tests/data_files/{name}.parquet"
+      external_location: "tests/data_files/{name}.csv"
     tables:
       - name: customers
       - name: orders

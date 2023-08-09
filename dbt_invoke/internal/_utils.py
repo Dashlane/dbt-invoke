@@ -194,7 +194,17 @@ def dbt_ls(
         # Because we set the dbt global arg "--log-format json", if
         # line is valid json then it may be an actual result or it
         # may be some other output from dbt, like a warning.
-        data = json.loads(line).get("data")
+        try:
+            line_dict = json.loads(line)
+        # If line is not valid json, then it should be an actual
+        # result. This is because even when the "dbt ls" command
+        # arg "--output" is not set to json, non-result logs will
+        # still be in json format (due to the dbt global arg
+        # "--log-format json").
+        except ValueError:
+            result_lines_filtered.append(line)
+            continue
+        data = line_dict.get("data")
         if data and "msg" in data:
             line_dict = json.loads(data["msg"])
         else:
