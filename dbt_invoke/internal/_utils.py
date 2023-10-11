@@ -136,6 +136,8 @@ def get_project_info(ctx, project_dir=None):
     template_path = Path(project_path, 'dbt_invoke_template.yml')
     if template_path.exists():
         ctx.config['template_yml'] = parse_yaml(template_path)
+    else:
+        ctx.config['template_yml'] = None
     # Set context config key-value pairs
     ctx.config['project_path'] = project_path
     ctx.config['project_name'] = project_name
