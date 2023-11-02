@@ -839,7 +839,7 @@ def _structure_property_file_dict(
         )
         # If dbt_invoke_template.yml exists, adds templated properties to column 
         # when not already present
-        if template_yml and 'columns' in template_yml.get(resource_type):
+        if template_yml and 'columns' in template_yml.get(resource_type, dict()):
             _apply_template(
                 column_dict, template_yml[resource_type]['columns']
             )
