@@ -193,6 +193,42 @@ dbt-invoke properties.delete <options>
   - `<options>` uses the same arguments as for creating/updating property
     files, except for `--threads`.
 
+
+### Applying default properties using `dbt_invoke_template.yml`
+
+You can pass custom default properties to be added to property files on update.
+To do so, add a `dbt_invoke_template.yml` at the root of your dbt project,
+using the following convention:
+
+
+```
+model:
+  meta:
+    owner: "@default"
+  columns:
+    foo: "bar"
+
+seed:
+  meta:
+    owner: "@default"
+  columns:
+    foo: "bar"
+
+snapshot:
+  meta:
+    owner: "@default"
+  columns:
+    foo: "bar"
+
+analysis:
+  meta:
+    owner: "@default"
+  columns:
+    foo: "bar"
+```
+
+Note: only `model`, `seed`, `snapshot` and `analysis` are supported.
+
 ### Help
 
 - To view the list of available commands and their short descriptions, run:

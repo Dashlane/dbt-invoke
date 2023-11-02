@@ -715,6 +715,7 @@ def _create_property_file(
         property_path,
         resource_dict,
         columns,
+        ctx.config['template_yml']
     )
     _utils.write_yaml(
         property_path,
@@ -786,7 +787,12 @@ def _get_columns(ctx, resource_location, resource_dict, **kwargs):
         return columns
 
 
-def _structure_property_file_dict(location, resource_dict, columns_list):
+def _structure_property_file_dict(
+    location,
+    resource_dict,
+    columns_list,
+    template_yml
+):
     """
     Structure a dictionary that will be used to create a property file
 
@@ -813,6 +819,12 @@ def _structure_property_file_dict(location, resource_dict, columns_list):
         property_file_dict = _get_property_header(resource_name, resource_type)
     # Get the sub-dictionaries of each existing column
     resource_type_plural = _SUPPORTED_RESOURCE_TYPES[resource_type]
+    # If dbt_invoke_template.yml exists, adds templated properties to header 
+    # when not already present
+    if template_yml and resource_type in template_yml:
+        _apply_template(
+            property_file_dict[resource_type_plural][0], template_yml[resource_type]
+        )
     existing_columns_dict = {
         item['name']: item
         for item in property_file_dict[resource_type_plural][0]['columns']
@@ -825,10 +837,31 @@ def _structure_property_file_dict(location, resource_dict, columns_list):
         column_dict = existing_columns_dict.get(
             column, _get_property_column(column)
         )
+        # If dbt_invoke_template.yml exists, adds templated properties to column 
+        # when not already present
+        if template_yml and 'columns' in template_yml.get(resource_type, dict()):
+            _apply_template(
+                column_dict, template_yml[resource_type]['columns']
+            )
         property_file_dict[resource_type_plural][0]['columns'].append(
             column_dict
         )
     return property_file_dict
+
+
+def _apply_template(property_dict, template):
+    """
+    Updates a dictionary with template's yml default properties
+    if said dictionary does not already contain the properties.
+
+    :param property_dict: the dictionary to be updated
+    :param template: a dictionary representing the templated properties
+        to be applied on property_dict
+    :return: None
+    """
+    for key in template:
+        if key not in property_dict:
+            property_dict[key] = template[key]
 
 
 def _get_property_header(resource, resource_type, properties=None):
