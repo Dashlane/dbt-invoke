@@ -7,3 +7,4 @@ dbt-duckdb:
     default:
       type: duckdb
       path: ./dbt.duckdb
+      database: dbt
