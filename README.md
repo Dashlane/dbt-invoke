@@ -146,8 +146,11 @@ dbt-invoke properties <options>
   
   # Create/update property files for all models in a models/marts directory
   dbt-invoke properties --models marts
+
+  # Create/update property files for a 'users' model
+  dbt-invoke properties --models users
   
-  # Create/update property files for a 'users' model and an 'orders' models
+  # Create/update property files for a 'users' model and an 'orders' model
   dbt-invoke properties --models users,orders
   
   # Create/update property files for a 'users' model and all downstream models
